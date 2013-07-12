@@ -5,12 +5,14 @@ RSS News feed gathering and analysis tool.
 
 
 News websites are fastflowing rivers of information. When you browse a news website you  
+
      * Get fed information news publishers feel is relevant to the masses
      * Happen to see what was "important news" at the time you visited the website but not necessarily overall for that day
      * Are distracted from the real news by flashing images a big text
      * Read a story, navigate away, and forget about the story and when you read it
      
 Siftmode will aim to analyze the words in your selection of RSS news feeds and
+
      * Display trends in the overall news website group you have selected
      * Compare trends over specific time frames
      * Keep an archive of headlines, descriptions, and links for later retrieval
