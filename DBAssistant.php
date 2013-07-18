@@ -111,9 +111,5 @@ Class DBAssistant {
         return $db_conn;
     }
 }
-
-//$d = new DBAssistant();
-//$d->queryPrint('select * from `users`');
-//echo $d->sanitize("Cesar<script>", true);
 ?>
     

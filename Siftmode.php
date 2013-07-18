@@ -18,7 +18,7 @@ Class Siftmode {
         // Instantiate our database helper class
         $this->db_assistant = new DBAssistant();
         $this->app_error_log = getcwd() . '/Logs/app.log';
-        $this->app_show_errors = false;
+        $this->app_show_errors = true;
     }
     
     private function getLocalTime() {
@@ -54,7 +54,7 @@ Class Siftmode {
                 $feed_name = $this->db_assistant->sanitize($feed_name, true);
                 $feed_description = $this->db_assistant->sanitize($feed_description, true);
                 
-                $sql = "INSERT INTO `siftmode`.`feeds` (`CATEGORY_ID`, `FEED_URL`, `NAME`, `DESCRIPTION`, `CREATED_ON`) VALUES ({$category_id},'{$feed_url}','{$feed_name}','{$feed_description}', CURRENT_TIMESTAMP)";
+                $sql = "INSERT INTO `siftmode`.`feeds` (`CATEGORY_ID`, `FEED_URL`, `NAME`, `DESCRIPTION`, `CREATED_ON`) VALUES ({$category_id},'{$feed_url}','{$feed_name}','{$feed_description}', UTC_TIMESTAMP())";
                 if ($this->db_assistant->query($sql) > 0) {
                     $this->applog("Failed to insert feed into `feeds` table. Feed Info: URL '{$feed_url}', NAME '{$feed_name}', DESCRIPTION '{$feed_description}'");
                 }
@@ -88,7 +88,7 @@ Class Siftmode {
                 
                 $common_words_string = $this->db_assistant->sanitize($common_words_string, true);
                 
-                $sql = "INSERT INTO `siftmode`.`categories` (`USER_ID`, `CATEGORY_NAME`, `COMMON_WORDS`, `CREATED_ON`) VALUES ({$user_id}, '{$category_name}', '{$common_words_string}', CURRENT_TIMESTAMP);";
+                $sql = "INSERT INTO `siftmode`.`categories` (`USER_ID`, `CATEGORY_NAME`, `COMMON_WORDS`, `CREATED_ON`) VALUES ({$user_id}, '{$category_name}', '{$common_words_string}', UTC_TIMESTAMP());";
                 if ($this->db_assistant->query($sql) > 0) {
                     $this->applog("Failed to insert feed category into `categories` table. Category Info: User ID '{$user_id}', CATEGORY NAME '{$category_name}', COMMON WORDS '{$common_words_string}'");
                 }
@@ -107,6 +107,22 @@ Class Siftmode {
         }
     }
     
+    public function ProcessPostText($input_string, $int_min_letters) { // returns a word array
+            // remove hyperlinks
+            $text = preg_replace("/\b(([\w-]+:\/\/?|www[.])[^\s()<>]+(?:\([\w\d]+\)|([^[:punct:]\s]|\/)))/m", ' ', $input_string);
+            // strips away &'s and such
+            $text = html_entity_decode($text);
+            // lowercase text, remove links, usernames
+            $text = strtolower($text);
+            // remove leftover non-words
+            $text = preg_replace("/([^\w+-])/", ' ', $text);
+            // match only words X letters long or greater
+            preg_match_all("/\w{" . $int_min_letters . ",}/m", $text . ' ', $tmp_array, PREG_PATTERN_ORDER);
+            // turn resulting array into an array of unique words
+            $tmp_array[0] = array_unique($tmp_array[0]);
+            return $tmp_array[0];
+    }
+        
     public function ProcessAndInsertPost($feed_id, $entry_array) {
         
         if (is_int($feed_id)) {
@@ -115,9 +131,14 @@ Class Siftmode {
                 $entry_link = $this->db_assistant->sanitize($entry_array->link, true);
                 $entry_title = $this->db_assistant->sanitize($entry_array->title, true);
                 $entry_description = $this->db_assistant->sanitize($entry_array->description, true);
-                $entry_published = strftime("%Y-%m-%d %H:%M:%S", strtotime($this->db_assistant->sanitize($entry_array->pubDate, true))); // Convert to UCT Timestamp
-
-                $sql = "INSERT INTO `siftmode`.`feeds_data` (`FEED_ID`, `POST_LINK`, `PUBLISHED_ON`, `POST_HEADLINE`, `POST_HEADLINE_ARRAY`, `POST_SUMMARY`, `POST_SUMMARY_ARRAY`, `POST_BODY`, `POST_BODY_ARRAY`, `UPDATED_ON`, `CREATED_ON`) VALUES ({$feed_id}, '{$entry_link}', '{$entry_published}', '{$entry_title}', NULL, '{$entry_description}', NULL, NULL, NULL, NULL, CURRENT_TIMESTAMP);";
+                $entry_published = strtotime($this->db_assistant->sanitize($entry_array->pubDate, true)); // Convert to UCT Integer
+                $entry_published = gmdate("Y-m-d H:i:s", $entry_published); // Convert to UCT Timestamp
+                
+                // Strip content of data we can't really analyze (for now)
+                $entry_headline_array_string = implode(',', $this->ProcessPostText($entry_title, 3));
+                $entry_summary_array_string = implode(',', $this->ProcessPostText($entry_description, 3));
+                
+                $sql = "INSERT INTO `siftmode`.`feeds_data` (`FEED_ID`, `POST_LINK`, `PUBLISHED_ON`, `POST_HEADLINE`, `POST_HEADLINE_ARRAY`, `POST_SUMMARY`, `POST_SUMMARY_ARRAY`, `POST_BODY`, `POST_BODY_ARRAY`, `CREATED_ON`) VALUES ({$feed_id}, '{$entry_link}', '{$entry_published}', '{$entry_title}', '{$entry_headline_array_string}', '{$entry_description}', '{$entry_summary_array_string}', NULL, NULL, UTC_TIMESTAMP());";
                 if ($this->db_assistant->query($sql) > 0) {
                     $this->applog("Failed to insert post into `feeds_data` table. Feed Info: URL '{$entry_link}', TITLE '{$entry_title}', DESCRIPTION '{$entry_description}', PUBLISHED '{$entry_published}'");
                 }
@@ -139,12 +160,12 @@ Class Siftmode {
             $sql = "SELECT `PUBLISHED_ON` FROM `siftmode`.`feeds_data` WHERE `FEED_ID` = {$feed_id} ORDER BY `PUBLISHED_ON` DESC LIMIT 1";
             $result = $this->db_assistant->query($sql);
             $rows = mysqli_fetch_array($result);
-            $feed_last_published = $rows[0];
+            $last_feed_stored = $rows[0];
             
-            if ($feed_last_published == null) {
+            if ($last_feed_stored == null) {
                 // If this is a new entry, only fetch today's posts
-                $todays_date = date("Y-m-d");
-                $feed_last_published = strftime("%Y-%m-%d %H:%M:%S", strtotime($todays_date)); 
+                $todays_date = date("Y-m-d 00:00:00");
+                $last_feed_stored = strtotime('-1 day', strtotime($todays_date)); // If nothing is stored, get the last day's feeds.
             } 
             
             // Fetch posts
@@ -152,9 +173,9 @@ Class Siftmode {
             $x = new SimpleXmlElement($content);
             
             foreach($x->channel->item as $entry) {
-                // Save post if greater than the latest one on the database
-                $entry_published = strftime("%Y-%m-%d %H:%M:%S", strtotime($this->db_assistant->sanitize($entry->pubDate, true))); // Convert to UCT Timestamp
-                if (strtotime($entry_published) > strtotime($feed_last_published)) {
+                // Save post if greater than the latest one on the database.
+                $entry_published = strtotime($this->db_assistant->sanitize($entry->pubDate, true));
+                if ($entry_published > $last_feed_stored) {
                     $this->ProcessAndInsertPost($feed_id, $entry);
                 }
             }
@@ -162,12 +183,8 @@ Class Siftmode {
     }
 
 }
-$d = new Siftmode();
-
-//Add feed tests
-//$d->AddFeed(1,"http://quintero.me/feeds3/", "feed name 3", "feed desc3");
-//$d->AddCategory(1,"cesars category", "<>hello, world");
-$d->FetchRSS(2);
+//$d = new Siftmode();
+//$d->FetchRSS(8);
 
 ?>
 
@@ -175,4 +192,6 @@ $d->FetchRSS(2);
 0. Simplify/correct date comparisons if possible.
 1. Process text completely before insert.
 2. Option for deleting account. Delete all of the users feeds, their cats, and their summaries.
+3. SQL- Make sure posts are not duplicated
+4. PHP- Eliminate things like #039 from coming into the summary fields 
 

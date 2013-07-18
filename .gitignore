@@ -4,3 +4,9 @@
 .DS_Store
 
 Siftmode.phpproj.user
+/nbproject/private/
+nbproject/project.properties
+
+nbproject/project.xml
+
+*.log
