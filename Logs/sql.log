@@ -1,0 +1,16 @@
+(July 18, 2013 11:30:25 PM) Error: 1064: You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near 's virulent Yemeni affiliate which is known as al Qaeda in the Arabian Peninsula ' at line 1
+(July 18, 2013 11:34:14 PM) Error: 1064: You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near 's virulent Yemeni affiliate which is known as al Qaeda in the Arabian Peninsula ' at line 1
+(July 18, 2013 11:35:21 PM) Error: 1064: You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near 's virulent Yemeni affiliate which is known as al Qaeda in the Arabian Peninsula ' at line 1
+(July 18, 2013 11:42:20 PM) Error: 1064: You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near 's virulent Yemeni affiliate which is known as al Qaeda in the Arabian Peninsula ' at line 1
+(July 18, 2013 11:42:30 PM) Error: 1064: You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near 's virulent Yemeni affiliate which is known as al Qaeda in the Arabian Peninsula ' at line 1
+(July 20, 2013 12:46:04 AM) Error: 1064: You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near '100, 0,'http://www.quinteros.me/feeds','feed','', UTC_TIMESTAMP()) AS tmp 
+    ' at line 2
+(July 20, 2013 12:46:45 AM) Error: 1064: You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near '100, 0,'http://www.quinteros.me/feedz','feed','', UTC_TIMESTAMP()) AS tmp 
+    ' at line 2
+(July 20, 2013 12:47:05 AM) Error: 1064: You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near '100, 0,'http://www.quinteros.me/feedz','feed','', UTC_TIMESTAMP()) AS tmp 
+    ' at line 2
+(July 20, 2013 1:19:07 AM) Error: 1060: Duplicate column name 'NULL'
+(July 20, 2013 1:48:44 AM) Error: 1060: Duplicate column name 'NULL'
+(July 20, 2013 1:49:11 AM) Error: 1060: Duplicate column name 'NULL'
+(July 20, 2013 1:50:25 AM) Error: 1060: Duplicate column name 'NULL'
+(July 20, 2013 1:51:09 AM) Error: 1060: Duplicate column name 'NULL'

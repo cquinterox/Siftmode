@@ -46,15 +46,18 @@ Class Siftmode {
         }
     }
     
-    public function InsertFeed($category_id, $feed_url, $feed_name, $feed_description = "") {
-        if (is_int($category_id)) {
+    public function InsertFeed($user_id, $category_id, $feed_url, $feed_name, $feed_description = "") {
+        if (is_int($category_id) && is_int($user_id)) {
             if (strlen(trim($feed_name)) > 0) {
                 
                 $feed_url = $this->db_assistant->sanitize($feed_url, true);
                 $feed_name = $this->db_assistant->sanitize($feed_name, true);
                 $feed_description = $this->db_assistant->sanitize($feed_description, true);
                 
-                $sql = "INSERT INTO `siftmode`.`feeds` (`CATEGORY_ID`, `FEED_URL`, `NAME`, `DESCRIPTION`, `CREATED_ON`) VALUES ({$category_id},'{$feed_url}','{$feed_name}','{$feed_description}', UTC_TIMESTAMP())";
+                $sql = "INSERT INTO `SIFTMODE`.`FEEDS` (`USER_ID`,`CATEGORY_ID`, `FEED_URL`, `NAME`, `DESCRIPTION`, `CREATED_ON`) 
+                        SELECT * FROM (SELECT {$user_id}, {$category_id},'{$feed_url}','{$feed_name}','{$feed_description}', UTC_TIMESTAMP()) AS tmp 
+                        WHERE NOT EXISTS (SELECT * FROM `SIFTMODE`.`FEEDS` WHERE `USER_ID`= {$user_id} AND `CATEGORY_ID` = {$category_id} AND (`FEED_URL` = '{$feed_url}' OR `NAME` = '{$feed_name}')) LIMIT 1;";
+                        
                 if ($this->db_assistant->query($sql) > 0) {
                     $this->applog("Failed to insert feed into `feeds` table. Feed Info: URL '{$feed_url}', NAME '{$feed_name}', DESCRIPTION '{$feed_description}'");
                 }
@@ -108,37 +111,52 @@ Class Siftmode {
     }
     
     public function ProcessPostText($input_string, $int_min_letters) { // returns a word array
+            // lowercase text, remove links, usernames
+            $text = strtolower($input_string);
             // remove hyperlinks
-            $text = preg_replace("/\b(([\w-]+:\/\/?|www[.])[^\s()<>]+(?:\([\w\d]+\)|([^[:punct:]\s]|\/)))/m", ' ', $input_string);
+            $text = preg_replace("/\b(([\w-]+:\/\/?|www[.])[^\s()<>]+(?:\([\w\d]+\)|([^[:punct:]\s]|\/)))/m", ' ', $text);
             // strips away &'s and such
             $text = html_entity_decode($text);
-            // lowercase text, remove links, usernames
-            $text = strtolower($text);
-            // remove leftover non-words
+            // remove commas (helps with larger numbers)
+            $text = preg_replace("/(,)/", '', $text);
+            // remove non-words except hash tags, twitter names etc
             $text = preg_replace("/([^\w+-])/", ' ', $text);
+            // remove trailing commas that could be left over
+            // Sanitize finally (just in case)
+            $text = $this->db_assistant->sanitize($text, true);
             // match only words X letters long or greater
             preg_match_all("/\w{" . $int_min_letters . ",}/m", $text . ' ', $tmp_array, PREG_PATTERN_ORDER);
             // turn resulting array into an array of unique words
             $tmp_array[0] = array_unique($tmp_array[0]);
             return $tmp_array[0];
     }
-        
+    
     public function ProcessAndInsertPost($feed_id, $entry_array) {
         
         if (is_int($feed_id)) {
             if ($entry_array != null ) {
-                
+
                 $entry_link = $this->db_assistant->sanitize($entry_array->link, true);
-                $entry_title = $this->db_assistant->sanitize($entry_array->title, true);
-                $entry_description = $this->db_assistant->sanitize($entry_array->description, true);
                 $entry_published = strtotime($this->db_assistant->sanitize($entry_array->pubDate, true)); // Convert to UCT Integer
                 $entry_published = gmdate("Y-m-d H:i:s", $entry_published); // Convert to UCT Timestamp
+                
+                // Don't sanitize yet as it will add unecessary numbers to the text
+                $entry_title = $entry_array->title;
+                $entry_description = $entry_array->description;
                 
                 // Strip content of data we can't really analyze (for now)
                 $entry_headline_array_string = implode(',', $this->ProcessPostText($entry_title, 3));
                 $entry_summary_array_string = implode(',', $this->ProcessPostText($entry_description, 3));
                 
-                $sql = "INSERT INTO `siftmode`.`feeds_data` (`FEED_ID`, `POST_LINK`, `PUBLISHED_ON`, `POST_HEADLINE`, `POST_HEADLINE_ARRAY`, `POST_SUMMARY`, `POST_SUMMARY_ARRAY`, `POST_BODY`, `POST_BODY_ARRAY`, `CREATED_ON`) VALUES ({$feed_id}, '{$entry_link}', '{$entry_published}', '{$entry_title}', '{$entry_headline_array_string}', '{$entry_description}', '{$entry_summary_array_string}', NULL, NULL, UTC_TIMESTAMP());";
+                // Now lets strip excess characters off before saving
+                $entry_title = $this->db_assistant->sanitize($entry_title, true);
+                $entry_description = $this->db_assistant->sanitize($entry_description, true);
+                
+                
+                $sql = "INSERT INTO `SIFTMODE`.`FEEDS_DATA` (`FEED_ID`, `POST_LINK`, `PUBLISHED_ON`, `POST_HEADLINE`, `POST_HEADLINE_ARRAY`, `POST_SUMMARY`, `POST_SUMMARY_ARRAY`, `CREATED_ON`) 
+                        SELECT * FROM (SELECT {$feed_id}, '{$entry_link}', '{$entry_published}', '{$entry_title}', '{$entry_headline_array_string}', '{$entry_description}', '{$entry_summary_array_string}', UTC_TIMESTAMP()) AS tmp 
+                        WHERE NOT EXISTS (SELECT * FROM `SIFTMODE`.`FEEDS_DATA` WHERE `FEED_ID`= {$feed_id} AND `PUBLISHED_ON` = '{$entry_published}') LIMIT 1;";    
+                
                 if ($this->db_assistant->query($sql) > 0) {
                     $this->applog("Failed to insert post into `feeds_data` table. Feed Info: URL '{$entry_link}', TITLE '{$entry_title}', DESCRIPTION '{$entry_description}', PUBLISHED '{$entry_published}'");
                 }
@@ -183,15 +201,12 @@ Class Siftmode {
     }
 
 }
-//$d = new Siftmode();
-//$d->FetchRSS(8);
 
 ?>
 
 // TODO
-0. Simplify/correct date comparisons if possible.
-1. Process text completely before insert.
-2. Option for deleting account. Delete all of the users feeds, their cats, and their summaries.
-3. SQL- Make sure posts are not duplicated
-4. PHP- Eliminate things like #039 from coming into the summary fields 
+1. Option for deleting account. Delete all of the users feeds, their cats, and their summaries.
+2. Stop duplicates on other tables.
+3. 
+
 
