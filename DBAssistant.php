@@ -98,8 +98,8 @@ Class DBAssistant {
             }
         } else {
             // htmlpsecialchars should be run on output but to avoid the hassle of remembering it's run here before it's saved.
-            get_magic_quotes_gpc() ?  $input = stripslashes($input) : null;
             $strip_html_tags_bool ? $input  = strip_tags($input) : null;
+            get_magic_quotes_gpc() ?  $input = stripslashes($input) : null;
             $input  = htmlentities($input, ENT_QUOTES);
             $output = mysqli_real_escape_string($this->getConnection(), $input);
             return $output;

@@ -69,7 +69,7 @@ Class Siftmode {
    
     public function DeleteFeed($feed_id) {
         if (is_int($feed_id)) {             
-            $sql = "DELETE FROM `siftmode`.`feeds` WHERE `ID`= {$feed_id}";
+            $sql = "DELETE FROM `siftmode`.`feeds` WHERE `ID`= {$feed_id}"; // Sift002
             if ($this->db_assistant->query($sql) > 0) {
                 $this->applog("Failed to delete feed from `feeds` table. Feed Info: ID '{$feed_id}'");
             }
@@ -110,13 +110,13 @@ Class Siftmode {
         }
     }
     
-    public function ProcessPostText($input_string, $int_min_letters) { // returns a word array
+    public function ProcessPostText($input_string, $int_min_letters) { // returns a word array, IMPORTANT: 4 LETTER MIN FOR MATCH AGAINST
             // lowercase text, remove links, usernames
             $text = strtolower($input_string);
             // remove hyperlinks
             $text = preg_replace("/\b(([\w-]+:\/\/?|www[.])[^\s()<>]+(?:\([\w\d]+\)|([^[:punct:]\s]|\/)))/m", ' ', $text);
-            // strips away &'s and such
-            $text = html_entity_decode($text);
+            // strips away html
+            $text = strip_tags($text);
             // remove commas (helps with larger numbers)
             $text = preg_replace("/(,)/", '', $text);
             // remove non-words except hash tags, twitter names etc
@@ -131,41 +131,59 @@ Class Siftmode {
             return $tmp_array[0];
     }
     
-    public function ProcessAndInsertPost($feed_id, $entry_array) {
+    public function ProcessAndInsertPost($feed_id, $post) {
         
         if (is_int($feed_id)) {
-            if ($entry_array != null ) {
+            if ($post != null ) {
 
-                $entry_link = $this->db_assistant->sanitize($entry_array->link, true);
-                $entry_published = strtotime($this->db_assistant->sanitize($entry_array->pubDate, true)); // Convert to UCT Integer
-                $entry_published = gmdate("Y-m-d H:i:s", $entry_published); // Convert to UCT Timestamp
+                $post_link = $this->db_assistant->sanitize($post->link, true);
+                $post_pubdate = strtotime($this->db_assistant->sanitize($post->pubDate, true)); // Convert to UCT Integer
+                $post_pubdate = gmdate("Y-m-d H:i:s", $post_pubdate); // Convert to UCT Timestamp
                 
                 // Don't sanitize yet as it will add unecessary numbers to the text
-                $entry_title = $entry_array->title;
-                $entry_description = $entry_array->description;
+                $post_title = $post->title;
+                $post_description = $post->description;
+                $post_title_description = $post->title . ' ' . $post->description;
+                $post_body = $this->file_get_data($post_link);
                 
                 // Strip content of data we can't really analyze (for now)
-                $entry_headline_array_string = implode(',', $this->ProcessPostText($entry_title, 3));
-                $entry_summary_array_string = implode(',', $this->ProcessPostText($entry_description, 3));
-                
+                $post_title_words = implode(',', $this->ProcessPostText($post_title, 4));
+                $post_description_words = implode(',', $this->ProcessPostText($post_description, 4));
+                $post_title_description_words = implode(',', $this->ProcessPostText($post_title_description, 4));
+
                 // Now lets strip excess characters off before saving
-                $entry_title = $this->db_assistant->sanitize($entry_title, true);
-                $entry_description = $this->db_assistant->sanitize($entry_description, true);
+                $post_title = $this->db_assistant->sanitize($post_title, true);
+                $post_description =  $this->db_assistant->sanitize($post_description, true);
+                $post_title_description = $this->db_assistant->sanitize($post_title_description, true);
+                $post_body = $this->db_assistant->sanitize($post_body, false);
                 
+                $sql = "INSERT INTO `SIFTMODE`.`POSTS` (`FEED_ID`, `LINK`, `PUBDATE`, `TITLE`, `TITLE_WORDS`, `DESCRIPTION`, `DESCRIPTION_WORDS`, `BODY`, `TITLE_DESCRIPTION_WORDS`, `CREATED_ON`) 
+                        SELECT * FROM (SELECT {$feed_id}, '{$post_link}', '{$post_pubdate}', '{$post_title}', '{$post_title_words}', '{$post_description}', '{$post_description_words}', '{$post_body}', '{$post_title_description_words}', UTC_TIMESTAMP()) AS tmp 
+                        WHERE NOT EXISTS (SELECT * FROM `SIFTMODE`.`POSTS` WHERE `FEED_ID`= {$feed_id} AND `PUBDATE` = '{$post_pubdate}') LIMIT 1;";    
                 
-                $sql = "INSERT INTO `SIFTMODE`.`FEEDS_DATA` (`FEED_ID`, `POST_LINK`, `PUBLISHED_ON`, `POST_HEADLINE`, `POST_HEADLINE_ARRAY`, `POST_SUMMARY`, `POST_SUMMARY_ARRAY`, `CREATED_ON`) 
-                        SELECT * FROM (SELECT {$feed_id}, '{$entry_link}', '{$entry_published}', '{$entry_title}', '{$entry_headline_array_string}', '{$entry_description}', '{$entry_summary_array_string}', UTC_TIMESTAMP()) AS tmp 
-                        WHERE NOT EXISTS (SELECT * FROM `SIFTMODE`.`FEEDS_DATA` WHERE `FEED_ID`= {$feed_id} AND `PUBLISHED_ON` = '{$entry_published}') LIMIT 1;";    
-                
-                if ($this->db_assistant->query($sql) > 0) {
-                    $this->applog("Failed to insert post into `feeds_data` table. Feed Info: URL '{$entry_link}', TITLE '{$entry_title}', DESCRIPTION '{$entry_description}', PUBLISHED '{$entry_published}'");
+                if (!in_array($this->db_assistant->query($sql), array(0,1))) { // returns rows inserted so 0 and 1 are okay
+                    $this->applog("Failed to insert post into `POSTS` table. Feed Info: URL '{$post_link}', TITLE '{$post_title}', DESCRIPTION '{$post_description}', PUBLISHED '{$post_pubdate}'");
                 }
             } else {
-                $this->applog("Failed to insert post into `feeds_data` table. The feed name was blank.");
+                $this->applog("Failed to insert post into `POSTS` table. The feed name was blank.");
             }
         }
     }
     
+        
+    function file_get_data($url) { /* gets the data from a URL */
+            $ch = curl_init();
+            $timeout = 5;
+            curl_setopt($ch, CURLOPT_URL, $url);
+            curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
+            curl_setopt($ch, CURLOPT_FOLLOWLOCATION, 1);
+            curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, $timeout);
+            curl_setopt($ch, CURLOPT_USERAGENT,'Mozilla/5.0 (compatible; MSIE 10.0; Windows NT 6.1; Trident/6.0)'); // Lets pretend
+            $data = curl_exec($ch);
+            curl_close($ch);
+            return $data;
+    }
+
     public function FetchRSS($feed_id) {
         if (is_int($feed_id)) {
             //Get the URL
@@ -175,26 +193,26 @@ Class Siftmode {
             $feed_url = $rows[0];
             
             //Get the date of the last post fetched
-            $sql = "SELECT `PUBLISHED_ON` FROM `siftmode`.`feeds_data` WHERE `FEED_ID` = {$feed_id} ORDER BY `PUBLISHED_ON` DESC LIMIT 1";
+            $sql = "SELECT `PUBDATE` FROM `siftmode`.`POSTS` WHERE `FEED_ID` = {$feed_id} ORDER BY `PUBDATE` DESC LIMIT 1";
             $result = $this->db_assistant->query($sql);
             $rows = mysqli_fetch_array($result);
-            $last_feed_stored = $rows[0];
+            $last_feed_stored = strtotime($rows[0]);
             
             if ($last_feed_stored == null) {
                 // If this is a new entry, only fetch today's posts
                 $todays_date = date("Y-m-d 00:00:00");
                 $last_feed_stored = strtotime('-1 day', strtotime($todays_date)); // If nothing is stored, get the last day's feeds.
-            } 
+            }
             
             // Fetch posts
-            $content = file_get_contents($feed_url);
-            $x = new SimpleXmlElement($content);
+            $data = $this->file_get_data($feed_url);
+            $posts = new SimpleXmlElement($data);
             
-            foreach($x->channel->item as $entry) {
+            foreach($posts->channel->item as $post) {
                 // Save post if greater than the latest one on the database.
-                $entry_published = strtotime($this->db_assistant->sanitize($entry->pubDate, true));
-                if ($entry_published > $last_feed_stored) {
-                    $this->ProcessAndInsertPost($feed_id, $entry);
+                $post_pubdate = strtotime($this->db_assistant->sanitize($post->pubDate, true));
+                if ($post_pubdate > $last_feed_stored) {
+                    $this->ProcessAndInsertPost($feed_id, $post);
                 }
             }
         }
