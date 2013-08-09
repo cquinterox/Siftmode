@@ -1,0 +1,161 @@
+BEGIN
+
+/*
+	DEBUG VERSION
+	DEBUG VERSION
+	DEBUG VERSION
+	DEBUG VERSION
+*/
+
+DECLARE CATEGORY int(11);
+DECLARE STARTTIME timestamp;
+DECLARE ENDTIME timestamp;
+
+SET CATEGORY = 0;
+SET STARTTIME = '2013-07-01 00:00:00';
+SET ENDTIME = '2013-09-01 00:00:00';
+SET GLOBAL max_allowed_packet = 1073741824;
+SET SESSION group_concat_max_len = 1073741824;
+
+/* 
+
+Separate the data we need into a temp table for easier lookup.
+
+*/
+DROP TEMPORARY TABLE IF EXISTS `siftmode`.`tmpDataset`;
+CREATE TEMPORARY TABLE `siftmode`.`tmpDataset`
+(
+`id` int(11) NOT NULL AUTO_INCREMENT,
+`feed_id` int(11), 
+`post_id` int(11), 
+`link` text, 
+`pubdate` timestamp, 
+`title_description_words` longtext,
+UNIQUE KEY `ID` (`ID`), 
+FULLTEXT(`title_description_words`))
+ENGINE=MyISAM DEFAULT CHARSET=latin1 AUTO_INCREMENT=1 
+AS 
+(
+SELECT 
+`feeds`.`id` as `feed_id`, 
+`posts`.`id` as `post_id`, 
+`posts`.`link` as `link`, 
+`posts`.`pubdate` as `pubdate`, 
+`posts`.`title_description_words` as `title_description_words`
+FROM `siftmode`.`feeds`  
+LEFT JOIN  `siftmode`.`posts` 
+ON  `feeds`.`id` =  `posts`.`feed_id`  
+WHERE  `feeds`.`category_id` = CATEGORY AND `posts`.`pubdate` BETWEEN  STARTTIME AND  ENDTIME
+ORDER BY `posts`.`pubdate` DESC
+);
+
+/* 
+
+Insert all words into a temp table 
+
+*/
+DROP TEMPORARY TABLE IF EXISTS `siftmode`.`tmpAllwords`;
+CREATE TEMPORARY TABLE `siftmode`.`tmpAllwords` 
+(
+`id` int(11) NOT NULL AUTO_INCREMENT, 
+`word` VARCHAR(50), 
+`count` int(11) DEFAULT 0, 
+FULLTEXT (`word`), 
+UNIQUE KEY `id` (`id`)) 
+ENGINE=MyISAM DEFAULT CHARSET=latin1 AUTO_INCREMENT=1;
+SET @START = "INSERT INTO `siftmode`.`tmpAllwords` (`word`) VALUES ";
+SET @HEADLINE_WORDS = REPLACE(CONCAT("('", REPLACE((SELECT GROUP_CONCAT(`tmpDataset`.`title_description_words`) FROM `siftmode`.`tmpDataset`), "," , "'),('"), "');"), " ", "");
+SET @SQL = CONCAT(@START,@HEADLINE_WORDS);
+
+PREPARE tmpAllwords FROM @SQL;
+EXECUTE tmpAllwords;
+DEALLOCATE PREPARE tmpAllwords;
+
+/* 
+
+Copy unique words into a temp table and order by the amount of times they repeat 
+
+*/
+DROP TEMPORARY TABLE IF EXISTS `siftmode`.`tmpAllwordsSorted`;
+CREATE TEMPORARY TABLE `siftmode`.`tmpAllwordsSorted`
+(
+`id` int(11) NOT NULL AUTO_INCREMENT, 
+`word` VARCHAR(50), 
+`count` int(11) DEFAULT 0, 
+FULLTEXT (`word`), 
+UNIQUE KEY `id` (`id`)) 
+ENGINE=MyISAM DEFAULT CHARSET=latin1 AUTO_INCREMENT=1 AS 
+(
+	SELECT `word`, count(*) as `count` FROM `siftmode`.`tmpAllwords` GROUP BY `word` HAVING count(`word`)  >= (SELECT MAX(`min`) AS `min` FROM `config` WHERE `word_count` BETWEEN 0 AND count(*))  ORDER BY `count` DESC
+);
+
+/* Delete all predetermined 'common' words from our temp table. */
+SET @START = "DELETE FROM `siftmode`.`tmpAllwordsSorted` WHERE `word` IN(";
+SET @WORDS = REPLACE(CONCAT("'", REPLACE((SELECT GROUP_CONCAT(`common_words`) AS data FROM `siftmode`.`categories`), ",", "','"), "'"), " ", "");
+SET @END = ");";
+SET @SQL = CONCAT(@START,@WORDS, @END);
+
+PREPARE tmpAllwordsSorted FROM @SQL;
+EXECUTE tmpAllwordsSorted;
+/* Table cleanup */
+DROP TEMPORARY TABLE IF EXISTS `siftmode`.`tmpAllwords`;
+DEALLOCATE PREPARE tmpAllwordsSorted;
+
+/* 
+
+	Workaround since temp tables can't be used more than once 
+
+*/
+DROP TEMPORARY TABLE IF EXISTS `siftmode`.`tmp1`;
+CREATE TEMPORARY TABLE `siftmode`.`tmp1` AS (SELECT `Word` FROM `siftmode`.`tmpAllwordsSorted`);
+DROP TEMPORARY TABLE IF EXISTS `siftmode`.`tmp2`;
+CREATE TEMPORARY TABLE `siftmode`.`tmp2` AS (SELECT `Word` FROM `siftmode`.`tmpAllwordsSorted`);
+DROP TEMPORARY TABLE IF EXISTS `siftmode`.`tmp3`;
+CREATE TEMPORARY TABLE `siftmode`.`tmp3` AS (SELECT `Word` FROM `siftmode`.`tmpAllwordsSorted`);
+
+/* Table cleanup */
+DROP TEMPORARY TABLE IF EXISTS `siftmode`.`tmpAllwordsSorted`;
+
+DROP TEMPORARY TABLE IF EXISTS `siftmode`.`tmpPreliminaryResultSet`;
+CREATE TEMPORARY TABLE `siftmode`.`tmpPreliminaryResultSet` (`id` int(11) NOT NULL AUTO_INCREMENT, `words` varchar(155), `feed_ids` VARCHAR(150), `count` int(11) DEFAULT 0, FULLTEXT (`words`, feed_ids), UNIQUE KEY `id` (`id`)) ENGINE=MyISAM DEFAULT CHARSET=latin1 AUTO_INCREMENT=1;
+INSERT INTO `siftmode`.`tmpPreliminaryResultSet` SELECT NULL as `id`, CONCAT("+\"", `tmp1`.word, "\" +\"", `tmp2`.word, "\" +\"", `tmp3`.word, "\"") AS `words`, NULL AS `feed_ids`, 0 AS `count` FROM `tmp1`, `tmp2`,`tmp3` WHERE (`tmp1`.word <> `tmp2`.word) AND (`tmp1`.word <> `tmp3`.word) AND (`tmp2`.word <> `tmp3`.word);
+/* 
+INSERT INTO `siftmode`.`tmpPreliminaryResultSet` SELECT NULL as `id`, CONCAT("+\"", `tmp1`.word, "\" +\"", `tmp2`.word, "\"") AS Words, NULL AS Feed_IDS, 0 AS Count FROM `tmp1`, `tmp2` WHERE (`tmp1`.word <> `tmp2`.word);
+INSERT INTO `siftmode`.`tmpPreliminaryResultSet` SELECT NULL as `id`, CONCAT("+\"", `tmp1`.word, "\"") AS `words`, NULL AS `feed_ids`, 0 AS `count` FROM `tmp1`;
+*/
+
+DROP TEMPORARY TABLE IF EXISTS `siftmode`.`tmp1`;
+DROP TEMPORARY TABLE IF EXISTS `siftmode`.`tmp2`;
+DROP TEMPORARY TABLE IF EXISTS `siftmode`.`tmp3`;
+
+SELECT MIN(`ID`), MAX(`ID`) INTO @STARTID, @ENDID FROM `siftmode`.`tmpPreliminaryResultSet` LIMIT 1;
+WHILE @STARTID <= @ENDID DO 
+	SET @RowsLeftToPickFrom = EXISTS(SELECT 1 FROM `siftmode`.`tmpPreliminaryResultSet` LIMIT 1);
+	IF @RowsLeftToPickFrom = 1 THEN
+		SET @MATCH_POST_IDS = '';
+		SET @MATCH_COUNTS  = 0;
+		SET @WORDSET = (SELECT `Words` FROM `siftmode`.`tmpPreliminaryResultSet` WHERE ID = @STARTID LIMIT 1);
+		SET @SQL = CONCAT("SELECT GROUP_CONCAT(`tmpDataset`.`post_id`), COUNT(*) INTO @MATCH_POST_IDS, @MATCH_COUNTS FROM `siftmode`.`tmpDataset` WHERE (MATCH(`title_description_words`) AGAINST('", @WORDSET, "' IN BOOLEAN MODE));");
+		PREPARE FindMatch FROM @SQL;
+		EXECUTE FindMatch;
+		DEALLOCATE PREPARE FindMatch;
+
+		IF @MATCH_COUNTS > 0  THEN
+			SET @SQL = CONCAT("UPDATE `siftmode`.`tmpPreliminaryResultSet` SET `Feed_IDS` = '", @MATCH_POST_IDS, "', `Count` = ", @MATCH_COUNTS, " WHERE `tmpPreliminaryResultSet`.`ID` = ", @STARTID);
+			PREPARE UpdateCounts FROM @SQL;
+			EXECUTE UpdateCounts;
+			DEALLOCATE PREPARE UpdateCounts;
+
+			SET @SQL = CONCAT("DELETE FROM`siftmode`.`tmpDataset` WHERE (MATCH(`title_description_words`) AGAINST('", @WORDSET, "' IN BOOLEAN MODE));");
+			PREPARE DeleteTakenIDS FROM @SQL;
+			EXECUTE DeleteTakenIDS;
+			DEALLOCATE PREPARE DeleteTakenIDS;
+		END IF;
+		SET @STARTID = @STARTID + 1; 
+	ELSE
+		SET @STARTID = @ENDID + 1;
+	END IF;
+END WHILE;
+select * from tmpPreliminaryResultSet;
+
+END

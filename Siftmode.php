@@ -131,7 +131,7 @@ Class Siftmode {
             return $tmp_array[0];
     }
     
-    public function ProcessAndInsertPost($feed_id, $post) {
+    public function ProcessAndInsertPost($feed_id, $post, $fetch_article = 0) {
         
         if (is_int($feed_id)) {
             if ($post != null ) {
@@ -144,8 +144,10 @@ Class Siftmode {
                 $post_title = $post->title;
                 $post_description = $post->description;
                 $post_title_description = $post->title . ' ' . $post->description;
-                $post_body = $this->file_get_data($post_link);
-                
+                $post_article = NULL;
+                if ($fetch_article) {
+                    $post_article = $this->file_get_data($post_link);
+                }
                 // Strip content of data we can't really analyze (for now)
                 $post_title_words = implode(',', $this->ProcessPostText($post_title, 4));
                 $post_description_words = implode(',', $this->ProcessPostText($post_description, 4));
@@ -155,10 +157,12 @@ Class Siftmode {
                 $post_title = $this->db_assistant->sanitize($post_title, true);
                 $post_description =  $this->db_assistant->sanitize($post_description, true);
                 $post_title_description = $this->db_assistant->sanitize($post_title_description, true);
-                $post_body = $this->db_assistant->sanitize($post_body, false);
+                if ($fetch_article) {
+                    $post_article = $this->db_assistant->sanitize($post_article, false);
+                }
                 
-                $sql = "INSERT INTO `SIFTMODE`.`POSTS` (`FEED_ID`, `LINK`, `PUBDATE`, `TITLE`, `TITLE_WORDS`, `DESCRIPTION`, `DESCRIPTION_WORDS`, `BODY`, `TITLE_DESCRIPTION_WORDS`, `CREATED_ON`) 
-                        SELECT * FROM (SELECT {$feed_id}, '{$post_link}', '{$post_pubdate}', '{$post_title}', '{$post_title_words}', '{$post_description}', '{$post_description_words}', '{$post_body}', '{$post_title_description_words}', UTC_TIMESTAMP()) AS tmp 
+                $sql = "INSERT INTO `SIFTMODE`.`POSTS` (`FEED_ID`, `LINK`, `PUBDATE`, `TITLE`, `TITLE_WORDS`, `DESCRIPTION`, `DESCRIPTION_WORDS`, `ARTICLE`, `TITLE_DESCRIPTION_WORDS`, `CREATED_ON`) 
+                        SELECT * FROM (SELECT {$feed_id}, '{$post_link}', '{$post_pubdate}', '{$post_title}', '{$post_title_words}', '{$post_description}', '{$post_description_words}', '{$post_article}', '{$post_title_description_words}', UTC_TIMESTAMP()) AS tmp 
                         WHERE NOT EXISTS (SELECT * FROM `SIFTMODE`.`POSTS` WHERE `FEED_ID`= {$feed_id} AND `PUBDATE` = '{$post_pubdate}') LIMIT 1;";    
                 
                 if (!in_array($this->db_assistant->query($sql), array(0,1))) { // returns rows inserted so 0 and 1 are okay
@@ -187,13 +191,14 @@ Class Siftmode {
     public function FetchRSS($feed_id) {
         if (is_int($feed_id)) {
             //Get the URL
-            $sql = "SELECT `feed_url` FROM `siftmode`.`feeds` WHERE `ID`= {$feed_id}";
+            $sql = "SELECT `feed_url`, `save_articles` FROM `siftmode`.`feeds` WHERE `ID`= {$feed_id}";
             $result = $this->db_assistant->query($sql);
             $rows = mysqli_fetch_array($result);
             $feed_url = $rows[0];
+            $fetch_articles = (int)$rows[1];
             
             //Get the date of the last post fetched
-            $sql = "SELECT `PUBDATE` FROM `siftmode`.`POSTS` WHERE `FEED_ID` = {$feed_id} ORDER BY `PUBDATE` DESC LIMIT 1";
+            $sql = "SELECT `pubdate` FROM `siftmode`.`posts` WHERE `feed_id` = {$feed_id} ORDER BY `pubdate` DESC LIMIT 1";
             $result = $this->db_assistant->query($sql);
             $rows = mysqli_fetch_array($result);
             $last_feed_stored = strtotime($rows[0]);
@@ -212,7 +217,7 @@ Class Siftmode {
                 // Save post if greater than the latest one on the database.
                 $post_pubdate = strtotime($this->db_assistant->sanitize($post->pubDate, true));
                 if ($post_pubdate > $last_feed_stored) {
-                    $this->ProcessAndInsertPost($feed_id, $post);
+                    $this->ProcessAndInsertPost($feed_id, $post, $fetch_articles);
                 }
             }
         }

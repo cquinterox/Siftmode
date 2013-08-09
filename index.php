@@ -54,8 +54,8 @@
 
 include_once 'Siftmode.php';
 $x = new Siftmode();
-$x->FetchRSS(14);
-$x->FetchRSS(16);
+$x->FetchRSS(1);
+
 
 //            // Fetch posts
 //            $content = file_get_contents("http://rss.cnn.com/rss/cnn_topstories.rss");
