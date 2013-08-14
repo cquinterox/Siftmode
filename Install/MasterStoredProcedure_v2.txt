@@ -11,9 +11,9 @@ DECLARE CATEGORY int(11);
 DECLARE STARTTIME timestamp;
 DECLARE ENDTIME timestamp;
 
-SET CATEGORY = 1;
+SET CATEGORY = 0;
 SET STARTTIME = '2013-07-01 00:00:00';
-SET ENDTIME = '2013-09-07 00:00:00';
+SET ENDTIME = '2013-08-12 00:00:00';
 /* SET GLOBAL max_allowed_packet = 1073741824; */
 SET SESSION group_concat_max_len = 1073741824;
 
@@ -22,26 +22,28 @@ SET SESSION group_concat_max_len = 1073741824;
 Separate the data we need into a temp table for easier lookup.
 
 */
-DROP TEMPORARY TABLE IF EXISTS `siftmode`.`tmpMatchset`;
-CREATE TEMPORARY TABLE `siftmode`.`tmpMatchset`
+DROP TABLE IF EXISTS `siftmode`.`tmpMatchset`;
+CREATE TABLE `siftmode`.`tmpMatchset`
 (
 	`id` int(11) NOT NULL AUTO_INCREMENT,
 	`feed_id` int(11), 
 	`post_id` int(11), 
 	`link` text, 
+	`pubdate` timestamp,
 	`title_description_words` longtext,
 	`word_set_match_id` int(11),
 	`word_set_match_priority` int(11),
-	UNIQUE KEY `ID` (`ID`), 
-	FULLTEXT(`title_description_words`)
+	UNIQUE KEY `ID` (`ID`),
+	FULLTEXT KEY `title_description_words` (`title_description_words`)
 )
-ENGINE=MyISAM DEFAULT CHARSET=latin1 AUTO_INCREMENT=1 
+ENGINE=InnoDB DEFAULT CHARSET=latin1 AUTO_INCREMENT=1
 AS 
 (
 	SELECT 
 	`feeds`.`id` as `feed_id`, 
 	`posts`.`id` as `post_id`, 
 	`posts`.`link` as `link`, 
+	`posts`.`pubdate`,
 	`posts`.`title_description_words` as `title_description_words`,
 	NULL as `word_set_match_id`,
 	NULL as `word_set_match_priority`
@@ -57,15 +59,15 @@ AS
 Insert all words into a temp table 
 
 */
-DROP TEMPORARY TABLE IF EXISTS `siftmode`.`tmpAllwords`;
-CREATE TEMPORARY TABLE `siftmode`.`tmpAllwords` 
+DROP TABLE IF EXISTS `siftmode`.`tmpAllwords`;
+CREATE TABLE `siftmode`.`tmpAllwords` 
 (
 	`id` int(11) NOT NULL AUTO_INCREMENT, 
 	`word` VARCHAR(50), 
 	`count` int(11) DEFAULT 0, 
-	FULLTEXT (`word`), 
+	FULLTEXT KEY `word` (`word`), 
 	UNIQUE KEY `id` (`id`)) 
-	ENGINE=MyISAM DEFAULT CHARSET=latin1 AUTO_INCREMENT=1;
+	ENGINE=InnoDB DEFAULT CHARSET=latin1 AUTO_INCREMENT=1;
 	SET @START = "INSERT INTO `siftmode`.`tmpAllwords` (`word`) VALUES ";
 	SET @HEADLINE_WORDS = REPLACE(CONCAT("('", REPLACE((SELECT GROUP_CONCAT(`tmpMatchset`.`title_description_words`) FROM `siftmode`.`tmpMatchset`), "," , "'),('"), "');"), " ", "");
 	SET @SQL = CONCAT(@START,@HEADLINE_WORDS
@@ -83,17 +85,21 @@ Copy unique words into a temp table and order by the amount of times they repeat
 
 SET @REQ_MIN_WORD_COUNT = (SELECT MAX(`min`) AS `min` FROM `req_min_word_count` WHERE `word_count` BETWEEN 0 AND (SELECT count(*) FROM `siftmode`.`tmpAllwords`));
 
-DROP TEMPORARY TABLE IF EXISTS `siftmode`.`tmpAllwordsSorted`;
-CREATE TEMPORARY TABLE `siftmode`.`tmpAllwordsSorted`
+DROP TABLE IF EXISTS `siftmode`.`tmpAllwordsSorted`;
+CREATE TABLE `siftmode`.`tmpAllwordsSorted`
 (
 `id` int(11) NOT NULL AUTO_INCREMENT, 
 `word` VARCHAR(50), 
 `count` int(11) DEFAULT 0, 
-FULLTEXT (`word`), 
+FULLTEXT KEY `word` (`word`),
 UNIQUE KEY `id` (`id`)) 
-ENGINE=MyISAM DEFAULT CHARSET=latin1 AUTO_INCREMENT=1 AS 
+ENGINE=InnoDB DEFAULT CHARSET=latin1 AUTO_INCREMENT=1 AS 
 (
-	SELECT `word`, count(*) as `count` FROM `siftmode`.`tmpAllwords` GROUP BY `word` HAVING count(`word`)  >= @REQ_MIN_WORD_COUNT ORDER BY `count` DESC
+	SELECT `word`, count(*) as `count` 
+	FROM `siftmode`.`tmpAllwords` 
+	GROUP BY `word` 
+	HAVING count(`word`)  >= @REQ_MIN_WORD_COUNT 
+	ORDER BY `count` DESC
 );
 
 /* Delete all predetermined 'common' words from our temp table. */
@@ -123,8 +129,8 @@ CREATE TEMPORARY TABLE `siftmode`.`tmp3` AS (SELECT `Word` FROM `siftmode`.`tmpA
 /* Table cleanup */
 DROP TEMPORARY TABLE IF EXISTS `siftmode`.`tmpAllwordsSorted`;
 
-DROP TEMPORARY TABLE IF EXISTS `siftmode`.`tmpWordset`;
-CREATE TEMPORARY TABLE `siftmode`.`tmpWordset` (`id` int(11) NOT NULL AUTO_INCREMENT, `word1` varchar(50), `word2` varchar(50), `word3` varchar(50), FULLTEXT (`word1`, `word2`, `word3`), UNIQUE KEY `id` (`id`)) ENGINE=MyISAM DEFAULT CHARSET=latin1 AUTO_INCREMENT=1;
+DROP TABLE IF EXISTS `siftmode`.`tmpWordset`;
+CREATE TABLE `siftmode`.`tmpWordset` (`id` int(11) NOT NULL AUTO_INCREMENT, `word1` varchar(50), `word2` varchar(50), `word3` varchar(50), FULLTEXT (`word1`, `word2`, `word3`), UNIQUE KEY `id` (`id`)) ENGINE=InnoDB DEFAULT CHARSET=latin1 AUTO_INCREMENT=1;
 INSERT INTO `siftmode`.`tmpWordset` SELECT NULL as `id`, `tmp1`.word as `word1`, `tmp2`.word as `word2`, `tmp3`.word as `word3` FROM `tmp1`, `tmp2`,`tmp3` WHERE (`tmp1`.word <> `tmp2`.word) AND (`tmp1`.word <> `tmp3`.word) AND (`tmp2`.word <> `tmp3`.word);
 
 /* Table cleanup */
@@ -152,7 +158,7 @@ WHILE @STARTID <= @ENDID DO
 			
 			/* Priority 1 */
 			SET @SEARCH_STRING = CONCAT("+", @W1,"+", @W2,"+", @W3);
-			SET @SQL = CONCAT("UPDATE `siftmode`.`tmpMatchset` SET `word_set_match_id` = ", @STARTID, ", `word_set_match_priority` = 1 WHERE (MATCH(`title_description_words`) AGAINST('", @SEARCH_STRING, "' IN BOOLEAN MODE)) AND (`word_set_match_id` IS NULL) AND (`word_set_match_priority` IS NULL);");
+			SET @SQL = CONCAT("UPDATE `siftmode`.`tmpMatchset` SET `word_set_match_id` = ", @STARTID, ", `word_set_match_priority` = 1 WHERE MATCH(`title_description_words`) AGAINST('", @SEARCH_STRING, "' IN BOOLEAN MODE) AND `word_set_match_id` IS NULL AND `word_set_match_priority` IS NULL;");
 		
 			PREPARE FindMatch FROM @SQL;
 			EXECUTE FindMatch;
@@ -162,7 +168,7 @@ WHILE @STARTID <= @ENDID DO
 			IF @AffectedRow = 0 THEN
 				/* Priority 2 */
 				SET @SEARCH_STRING = CONCAT("+", @W1,"+", @W2,"-", @W3);
-				SET @SQL = CONCAT("UPDATE `siftmode`.`tmpMatchset` SET `word_set_match_id` = ", @STARTID, ", `word_set_match_priority` = 2 WHERE (MATCH(`title_description_words`) AGAINST('", @SEARCH_STRING, "' IN BOOLEAN MODE)) AND (`word_set_match_id` IS NULL) AND (`word_set_match_priority` IS NULL);");
+				SET @SQL = CONCAT("UPDATE `siftmode`.`tmpMatchset` SET `word_set_match_id` = ", @STARTID, ", `word_set_match_priority` = 2 WHERE MATCH(`title_description_words`) AGAINST('", @SEARCH_STRING, "' IN BOOLEAN MODE) AND `word_set_match_id` IS NULL AND `word_set_match_priority` IS NULL;");
 
 				PREPARE FindMatch FROM @SQL;
 				EXECUTE FindMatch;
@@ -173,7 +179,7 @@ WHILE @STARTID <= @ENDID DO
 			IF @AffectedRow = 0 THEN
 				/* Priority 3 */
 				SET @SEARCH_STRING = CONCAT("+", @W1,"-", @W2,"+", @W3);
-				SET @SQL = CONCAT("UPDATE `siftmode`.`tmpMatchset` SET `word_set_match_id` = ", @STARTID, ", `word_set_match_priority` = 3 WHERE (MATCH(`title_description_words`) AGAINST('", @SEARCH_STRING, "' IN BOOLEAN MODE)) AND (`word_set_match_id` IS NULL) AND (`word_set_match_priority` IS NULL);");
+				SET @SQL = CONCAT("UPDATE `siftmode`.`tmpMatchset` SET `word_set_match_id` = ", @STARTID, ", `word_set_match_priority` = 3 WHERE MATCH(`title_description_words`) AGAINST('", @SEARCH_STRING, "' IN BOOLEAN MODE) AND `word_set_match_id` IS NULL AND `word_set_match_priority` IS NULL;");
 
 				PREPARE FindMatch FROM @SQL;
 				EXECUTE FindMatch;
@@ -184,7 +190,7 @@ WHILE @STARTID <= @ENDID DO
 			IF @AffectedRow = 0 THEN
 				/* Priority 4 */
 				SET @SEARCH_STRING = CONCAT("-", @W1,"+", @W2,"+", @W3);
-				SET @SQL = CONCAT("UPDATE `siftmode`.`tmpMatchset` SET `word_set_match_id` = ", @STARTID, ", `word_set_match_priority` = 4 WHERE (MATCH(`title_description_words`) AGAINST('", @SEARCH_STRING, "' IN BOOLEAN MODE)) AND (`word_set_match_id` IS NULL) AND (`word_set_match_priority` IS NULL);");
+				SET @SQL = CONCAT("UPDATE `siftmode`.`tmpMatchset` SET `word_set_match_id` = ", @STARTID, ", `word_set_match_priority` = 4 WHERE MATCH(`title_description_words`) AGAINST('", @SEARCH_STRING, "' IN BOOLEAN MODE) AND `word_set_match_id` IS NULL AND `word_set_match_priority` IS NULL;");
 
 				PREPARE FindMatch FROM @SQL;
 				EXECUTE FindMatch;
@@ -195,7 +201,7 @@ WHILE @STARTID <= @ENDID DO
 			IF @AffectedRow = 0 THEN
 				/* Priority 5 */
 				SET @SEARCH_STRING = CONCAT("+", @W1,"-", @W2,"-", @W3);
-				SET @SQL = CONCAT("UPDATE `siftmode`.`tmpMatchset` SET `word_set_match_id` = ", @STARTID, ", `word_set_match_priority` = 5 WHERE (MATCH(`title_description_words`) AGAINST('", @SEARCH_STRING, "' IN BOOLEAN MODE)) AND (`word_set_match_id` IS NULL) AND (`word_set_match_priority` IS NULL);");
+				SET @SQL = CONCAT("UPDATE `siftmode`.`tmpMatchset` SET `word_set_match_id` = ", @STARTID, ", `word_set_match_priority` = 5 WHERE MATCH(`title_description_words`) AGAINST('", @SEARCH_STRING, "' IN BOOLEAN MODE) AND `word_set_match_id` IS NULL AND `word_set_match_priority` IS NULL;");
 
 				PREPARE FindMatch FROM @SQL;
 				EXECUTE FindMatch;
@@ -206,7 +212,7 @@ WHILE @STARTID <= @ENDID DO
 			IF @AffectedRow = 0 THEN
 				/* Priority 6 */
 				SET @SEARCH_STRING = CONCAT("-", @W1,"+", @W2,"-", @W3);
-				SET @SQL = CONCAT("UPDATE `siftmode`.`tmpMatchset` SET `word_set_match_id` = ", @STARTID, ", `word_set_match_priority` = 6 WHERE (MATCH(`title_description_words`) AGAINST('", @SEARCH_STRING, "' IN BOOLEAN MODE)) AND (`word_set_match_id` IS NULL) AND (`word_set_match_priority` IS NULL);");
+				SET @SQL = CONCAT("UPDATE `siftmode`.`tmpMatchset` SET `word_set_match_id` = ", @STARTID, ", `word_set_match_priority` = 6 WHERE MATCH(`title_description_words`) AGAINST('", @SEARCH_STRING, "' IN BOOLEAN MODE) AND `word_set_match_id` IS NULL AND `word_set_match_priority` IS NULL;");
 
 				PREPARE FindMatch FROM @SQL;
 				EXECUTE FindMatch;
@@ -217,7 +223,7 @@ WHILE @STARTID <= @ENDID DO
 			IF @AffectedRow = 0 THEN
 				/* Priority 7 */
 				SET @SEARCH_STRING = CONCAT("-", @W1,"-", @W2,"+", @W3);
-				SET @SQL = CONCAT("UPDATE `siftmode`.`tmpMatchset` SET `word_set_match_id` = ", @STARTID, ", `word_set_match_priority` = 7 WHERE (MATCH(`title_description_words`) AGAINST('", @SEARCH_STRING, "' IN BOOLEAN MODE)) AND (`word_set_match_id` IS NULL) AND (`word_set_match_priority` IS NULL);");
+				SET @SQL = CONCAT("UPDATE `siftmode`.`tmpMatchset` SET `word_set_match_id` = ", @STARTID, ", `word_set_match_priority` = 7 WHERE MATCH(`title_description_words`) AGAINST('", @SEARCH_STRING, "' IN BOOLEAN MODE) AND `word_set_match_id` IS NULL AND `word_set_match_priority` IS NULL;");
 
 				PREPARE FindMatch FROM @SQL;
 				EXECUTE FindMatch;
@@ -225,22 +231,33 @@ WHILE @STARTID <= @ENDID DO
 				DEALLOCATE PREPARE FindMatch;
 			END IF;
 	
-			IF @AffectedRow = 0 THEN
-				DELETE FROM `tmpWordset` WHERE `id` = @STARTID;
-			END IF;
 
 			SET @STARTID = @STARTID + 1; 
 		ELSE
 			SET @STARTID = @ENDID; 
 		END IF;
 END WHILE;
+
 /*
 select * from tmpWordset;
 */
 
-SELECT * from `tmpMatchset`
+SELECT 
+`tmpMatchset`.`feed_id` as `feed_id`,
+`tmpMatchset`.`post_id` as `post_id`,
+`tmpMatchset`.`word_set_match_id` as `match_id`,
+`tmpMatchset`.`word_set_match_priority` as `match_priority`,
+`tmpWordset`.`word1` as `word1`,
+`tmpWordset`.`word2` as `word2`,
+`tmpWordset`.`word3` as `word3`
+from `tmpMatchset`
 INNER JOIN `tmpWordset`
-ON `tmpMatchset`.`word_set_match_id` = `tmpWordset`.`id`;
+ON `tmpMatchset`.`word_set_match_id` = `tmpWordset`.`id`
+ORDER BY  `match_id` ASC,`match_priority` ASC;
 
+DROP TABLE IF EXISTS `siftmode`.`tmpAllwords`;
+DROP TABLE IF EXISTS `siftmode`.`tmpAllwordsSorted`;
+DROP TABLE IF EXISTS `siftmode`.`tmpMatchSet`;
+DROP TABLE IF EXISTS `siftmode`.`tmpWordSet`;
 
 END

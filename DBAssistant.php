@@ -31,7 +31,7 @@ Class DBAssistant {
         $this->mysql_host = 'localhost';    
         $this->mysql_database = 'siftmode';
         $this->mysql_user = 'root';
-        $this->mysql_password = '';
+        $this->mysql_password = 'root';
         $this->mysql_error_log = getcwd() . '/Logs/sql.log';
         $this->mysql_show_errors = true;  
         // End Settings
