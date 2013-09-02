@@ -54,9 +54,10 @@
 
 include_once 'Siftmode.php';
 $x = new Siftmode();
-$x->FetchRSS(2);
-$x->FetchRSS(3);
-$x->FetchRSS(4);
+$x->FetchCategory(1, 2);
+//$x->FetchPosts(2);
+//$x->FetchPosts(3);
+//$x->FetchPosts(4);
 
 
 //            // Fetch posts

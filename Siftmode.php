@@ -21,7 +21,7 @@ Class Siftmode {
         $this->app_show_errors = true;
     }
     
-    private function getLocalTime() {
+    private function GetLocalTime() {
         // Simple function that gets the current time for us
         $zone = new DateTimeZone('America/New_York');
         $time = new DateTime(date("Y-m-d g:i:sA", time()));
@@ -29,11 +29,11 @@ Class Siftmode {
         return $time->format('Y-m-d g:i:sA');
     }
     
-    private function applog($message) {   
+    private function AppLog($message) {   
         // Simple function that writes to the application log
         $error_message = "Application log '" . $this->app_error_log . "' can't be created or is not writable.";
         if (file_exists($this->app_error_log) && is_writable($this->app_error_log)) { 
-            $message = '(' . $this->getLocalTime() . ') Msg: ' . $message . "\n";
+            $message = '(' . $this->GetLocalTime() . ') Msg: ' . $message . "\n";
             error_log($message, 3, $this->app_error_log);
         } else {
             if(!$fileHandle = fopen($this->app_error_log, 'w')) {
@@ -59,10 +59,10 @@ Class Siftmode {
                         WHERE NOT EXISTS (SELECT * FROM `SIFTMODE`.`FEEDS` WHERE `USER_ID`= {$user_id} AND `CATEGORY_ID` = {$category_id} AND (`FEED_URL` = '{$feed_url}' OR `NAME` = '{$feed_name}')) LIMIT 1;";
                         
                 if ($this->db_assistant->query($sql) > 0) {
-                    $this->applog("Failed to insert feed into `feeds` table. Feed Info: URL '{$feed_url}', NAME '{$feed_name}', DESCRIPTION '{$feed_description}'");
+                    $this->AppLog("Failed to insert feed into `feeds` table. Feed Info: URL '{$feed_url}', NAME '{$feed_name}', DESCRIPTION '{$feed_description}'");
                 }
             } else {
-                $this->applog("Failed to insert feed into `feeds` table. The feed name was blank.");
+                $this->AppLog("Failed to insert feed into `feeds` table. The feed name was blank.");
             }
         }
     }
@@ -71,7 +71,7 @@ Class Siftmode {
         if (is_int($feed_id)) {             
             $sql = "DELETE FROM `siftmode`.`feeds` WHERE `ID`= {$feed_id}"; // Sift002
             if ($this->db_assistant->query($sql) > 0) {
-                $this->applog("Failed to delete feed from `feeds` table. Feed Info: ID '{$feed_id}'");
+                $this->AppLog("Failed to delete feed from `feeds` table. Feed Info: ID '{$feed_id}'");
             }
         }
     }
@@ -93,10 +93,10 @@ Class Siftmode {
                 
                 $sql = "INSERT INTO `siftmode`.`categories` (`USER_ID`, `CATEGORY_NAME`, `COMMON_WORDS`, `CREATED_ON`) VALUES ({$user_id}, '{$category_name}', '{$common_words_string}', UTC_TIMESTAMP());";
                 if ($this->db_assistant->query($sql) > 0) {
-                    $this->applog("Failed to insert feed category into `categories` table. Category Info: User ID '{$user_id}', CATEGORY NAME '{$category_name}', COMMON WORDS '{$common_words_string}'");
+                    $this->AppLog("Failed to insert feed category into `categories` table. Category Info: User ID '{$user_id}', CATEGORY NAME '{$category_name}', COMMON WORDS '{$common_words_string}'");
                 }
             } else {
-                $this->applog("Failed to insert feed category into `categories` table. The category name was blank.");
+                $this->AppLog("Failed to insert feed category into `categories` table. The category name was blank.");
             }
         }
     }
@@ -105,7 +105,7 @@ Class Siftmode {
         if (is_int($category_id)) {             
             $sql = "DELETE FROM `siftmode`.`categories` WHERE `ID`= {$category_id}";
             if ($this->db_assistant->query($sql) > 0) {
-                $this->applog("Failed to delete category from `categories` table. Category Info: ID '{$category_id}'");
+                $this->AppLog("Failed to delete category from `categories` table. Category Info: ID '{$category_id}'");
             }
         }
     }
@@ -146,7 +146,7 @@ Class Siftmode {
                 $post_title_description = $post->title . ' ' . $post->description;
                 $post_article = NULL;
                 if ($fetch_article) {
-                    $post_article = $this->file_get_data($post_link);
+                    $post_article = $this->FetchData($post_link);
                 }
                 // Strip content of data we can't really analyze (for now)
                 $post_title_words = implode(',', $this->ProcessPostText($post_title, 4));
@@ -166,16 +166,16 @@ Class Siftmode {
                         WHERE NOT EXISTS (SELECT * FROM `SIFTMODE`.`POSTS` WHERE `FEED_ID`= {$feed_id} AND `PUBDATE` = '{$post_pubdate}') LIMIT 1;";    
                 
                 if (!in_array($this->db_assistant->query($sql), array(0,1))) { // returns rows inserted so 0 and 1 are okay
-                    $this->applog("Failed to insert post into `POSTS` table. Feed Info: URL '{$post_link}', TITLE '{$post_title}', DESCRIPTION '{$post_description}', PUBLISHED '{$post_pubdate}'");
+                    $this->AppLog("Failed to insert post into `POSTS` table. Feed Info: URL '{$post_link}', TITLE '{$post_title}', DESCRIPTION '{$post_description}', PUBLISHED '{$post_pubdate}'");
                 }
             } else {
-                $this->applog("Failed to insert post into `POSTS` table. The feed name was blank.");
+                $this->AppLog("Failed to insert post into `POSTS` table. The feed name was blank.");
             }
         }
     }
     
         
-    function file_get_data($url) { /* gets the data from a URL */
+    function FetchData($url) { /* gets the data from a URL */
             $ch = curl_init();
             $timeout = 5;
             curl_setopt($ch, CURLOPT_URL, $url);
@@ -188,7 +188,7 @@ Class Siftmode {
             return $data;
     }
 
-    public function FetchRSS($feed_id) {
+    public function FetchPosts($feed_id) {
         if (is_int($feed_id)) {
             //Get the URL
             $sql = "SELECT `feed_url`, `save_articles` FROM `siftmode`.`feeds` WHERE `ID`= {$feed_id}";
@@ -201,6 +201,7 @@ Class Siftmode {
             $sql = "SELECT `pubdate` FROM `siftmode`.`posts` WHERE `feed_id` = {$feed_id} ORDER BY `pubdate` DESC LIMIT 1";
             $result = $this->db_assistant->query($sql);
             $rows = mysqli_fetch_array($result);
+            date_default_timezone_set('UTC');
             $last_feed_stored = strtotime($rows[0]);
             
             if ($last_feed_stored == null) {
@@ -210,7 +211,7 @@ Class Siftmode {
             }
             
             // Fetch posts
-            $data = $this->file_get_data($feed_url);
+            $data = $this->FetchData($feed_url);
             $posts = new SimpleXmlElement($data);
             
             foreach($posts->channel->item as $post) {
@@ -222,14 +223,29 @@ Class Siftmode {
             }
         }
     }
-
+    
+    public function FetchCategory($user_id, $cat_id) {
+        if (is_int($user_id) && is_int($cat_id)) {
+            //Get the categories' article ids
+            $sql = "SELECT `feeds`.`id` AS  `feed_id` 
+                FROM  `categories` 
+                INNER JOIN  `feeds` ON  `categories`.`user_id` =  `feeds`.`user_id` 
+                AND  `categories`.`id` =  `feeds`.`category_id` 
+                WHERE  `categories`.`user_id` = {$user_id} AND  `categories`.`id` = {$cat_id}";
+            $result = $this->db_assistant->query($sql);
+            $feeds_updated = 0;
+            while($row = mysqli_fetch_array($result))
+            {
+                if (is_int($feed_id = (int)$row['feed_id'])) {
+                    $this->FetchPosts($feed_id);
+                    $feeds_updated++;
+                }
+            }     
+            if ($feeds_updated > 0) {
+                $sql = "UPDATE `categories` SET `last_run_on`= CURRENT_TIME WHERE `user_id` = {$user_id} AND `id`= {$cat_id}";
+                $this->db_assistant->query($sql);
+            }
+        }
+    }
 }
-
 ?>
-
-// TODO
-1. Option for deleting account. Delete all of the users feeds, their cats, and their summaries.
-2. Stop duplicates on other tables.
-3. 
-
-
