@@ -137,6 +137,7 @@ Class Siftmode {
             if ($post != null ) {
 
                 $post_link = $this->db_assistant->sanitize($post->link, true);
+                date_default_timezone_set('UTC');
                 $post_pubdate = strtotime($this->db_assistant->sanitize($post->pubDate, true)); // Convert to UCT Integer
                 $post_pubdate = gmdate("Y-m-d H:i:s", $post_pubdate); // Convert to UCT Timestamp
                 
@@ -162,9 +163,9 @@ Class Siftmode {
                 }
                 
                 $sql = "INSERT INTO `SIFTMODE`.`POSTS` (`FEED_ID`, `LINK`, `PUBDATE`, `TITLE`, `TITLE_WORDS`, `DESCRIPTION`, `DESCRIPTION_WORDS`, `ARTICLE`, `TITLE_DESCRIPTION_WORDS`, `CREATED_ON`) 
-                        SELECT * FROM (SELECT {$feed_id}, '{$post_link}', '{$post_pubdate}', '{$post_title}', '{$post_title_words}', '{$post_description}', '{$post_description_words}', '{$post_article}', '{$post_title_description_words}', UTC_TIMESTAMP()) AS tmp 
+                        SELECT * FROM (SELECT {$feed_id} AS `FEED_ID`, '{$post_link}' AS `LINK`, '{$post_pubdate}' AS `PUBDATE`, '{$post_title}' AS `TITLE`, '{$post_title_words}' AS `TITLE_WORDS`, '{$post_description}' AS `DESCRIPTION`, '{$post_description_words}' AS `DESCRIPTION_WORDS`, '{$post_article}' AS `ARTICLE`, '{$post_title_description_words}' AS `TITLE_DESCRIPTION_WORDS`, UTC_TIMESTAMP() AS `CREATED_ON`) AS tmp 
                         WHERE NOT EXISTS (SELECT * FROM `SIFTMODE`.`POSTS` WHERE `FEED_ID`= {$feed_id} AND `PUBDATE` = '{$post_pubdate}') LIMIT 1;";    
-                
+
                 if (!in_array($this->db_assistant->query($sql), array(0,1))) { // returns rows inserted so 0 and 1 are okay
                     $this->AppLog("Failed to insert post into `POSTS` table. Feed Info: URL '{$post_link}', TITLE '{$post_title}', DESCRIPTION '{$post_description}', PUBLISHED '{$post_pubdate}'");
                 }
@@ -197,29 +198,12 @@ Class Siftmode {
             $feed_url = $rows[0];
             $fetch_articles = (int)$rows[1];
             
-            //Get the date of the last post fetched
-            $sql = "SELECT `pubdate` FROM `siftmode`.`posts` WHERE `feed_id` = {$feed_id} ORDER BY `pubdate` DESC LIMIT 1";
-            $result = $this->db_assistant->query($sql);
-            $rows = mysqli_fetch_array($result);
-            date_default_timezone_set('UTC');
-            $last_feed_stored = strtotime($rows[0]);
-            
-            if ($last_feed_stored == null) {
-                // If this is a new entry, only fetch today's posts
-                $todays_date = date("Y-m-d 00:00:00");
-                $last_feed_stored = strtotime('-1 day', strtotime($todays_date)); // If nothing is stored, get the last day's feeds.
-            }
-            
             // Fetch posts
             $data = $this->FetchData($feed_url);
             $posts = new SimpleXmlElement($data);
             
             foreach($posts->channel->item as $post) {
-                // Save post if greater than the latest one on the database.
-                $post_pubdate = strtotime($this->db_assistant->sanitize($post->pubDate, true));
-                if ($post_pubdate > $last_feed_stored) {
-                    $this->ProcessAndInsertPost($feed_id, $post, $fetch_articles);
-                }
+                $this->ProcessAndInsertPost($feed_id, $post, $fetch_articles);
             }
         }
     }
