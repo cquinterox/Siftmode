@@ -1,0 +1,3 @@
+CREATE DEFINER=`root`@`localhost` PROCEDURE `SM_UpdateCategoriesLastRun`(IN _CATEGORY_ID int)
+    COMMENT 'Author: Cesar Quinteros\nCreated: 2013-09-04\nDescription: Updates LAST_RUN column after posts have been fetched.'
+UPDATE `categories` SET `last_run_on`= CURRENT_TIME WHERE `id` = _CATEGORY_ID

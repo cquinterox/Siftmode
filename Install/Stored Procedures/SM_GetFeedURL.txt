@@ -1,0 +1,5 @@
+CREATE DEFINER=`root`@`localhost` PROCEDURE `SM_GetFeedURL`(IN _FEED_ID int)
+    COMMENT 'Author: Cesar Quinteros\nCreated: 2013-09-04\nDescription: Fetches feed URL and save articles information for a feed.'
+SELECT `feed_url`, `save_articles` 
+FROM `siftmode`.`feeds` 
+WHERE `ID`= _FEED_ID

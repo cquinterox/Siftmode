@@ -1,8 +1,3 @@
-(September 2, 2013 1:56:29 AM) Error: 1292: Incorrect datetime value: '2013-09-02 1:56:29AM' for column 'LAST_RUN_ON' at row 1
-(September 3, 2013 10:14:43 PM) Error: 1060: Duplicate column name 'kodak,emerges,from,bankruptcy,protection,much,smaller,business,concentrating,services,businesses,such,printing,packaging'
-(September 3, 2013 11:54:50 PM) Error: 1060: Duplicate column name 'kodak,emerges,from,bankruptcy,protection,much,smaller,business,concentrating,services,businesses,such,printing,packaging'
-(September 3, 2013 11:58:36 PM) Error: 1060: Duplicate column name 'kodak,emerges,from,bankruptcy,protection,much,smaller,business,concentrating,services,businesses,such,printing,packaging'
-(September 3, 2013 11:58:46 PM) Error: 1060: Duplicate column name 'kodak,emerges,from,bankruptcy,protection,much,smaller,business,concentrating,services,businesses,such,printing,packaging'
-(September 3, 2013 11:59:14 PM) Error: 1060: Duplicate column name 'kodak,emerges,from,bankruptcy,protection,much,smaller,business,concentrating,services,businesses,such,printing,packaging'
-(September 3, 2013 11:59:37 PM) Error: 1060: Duplicate column name 'kodak,emerges,from,bankruptcy,protection,much,smaller,business,concentrating,services,businesses,such,printing,packaging'
-(September 4, 2013 12:08:20 AM) Error: 0: 
+(September 5, 2013 12:22:28 AM) Error: 1064: You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near '`Sift_004 (2,'http://www.bbc.co.uk/news/world-us-canada-23967190#sa-ns_mchannel=' at line 1
+(September 5, 2013 12:24:23 AM) Error: 1064: You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near '`Sift_004 (2,'http://www.bbc.co.uk/news/world-us-canada-23967190#sa-ns_mchannel=' at line 1
+(September 5, 2013 12:25:21 AM) Error: 1054: Unknown column '_POST_TITLE_WORD' in 'field list'

@@ -54,9 +54,9 @@ Class Siftmode {
                 $feed_name = $this->db_assistant->sanitize($feed_name, true);
                 $feed_description = $this->db_assistant->sanitize($feed_description, true);
                 
-                $sql = "INSERT INTO `SIFTMODE`.`FEEDS` (`USER_ID`,`CATEGORY_ID`, `FEED_URL`, `NAME`, `DESCRIPTION`, `CREATED_ON`) 
-                        SELECT * FROM (SELECT {$user_id}, {$category_id},'{$feed_url}','{$feed_name}','{$feed_description}', UTC_TIMESTAMP()) AS tmp 
-                        WHERE NOT EXISTS (SELECT * FROM `SIFTMODE`.`FEEDS` WHERE `USER_ID`= {$user_id} AND `CATEGORY_ID` = {$category_id} AND (`FEED_URL` = '{$feed_url}' OR `NAME` = '{$feed_name}')) LIMIT 1;";
+                $sql = "INSERT INTO `SIFTMODE`.`FEEDS` (`CATEGORY_ID`, `FEED_URL`, `NAME`, `DESCRIPTION`, `CREATED_ON`) 
+                        SELECT * FROM (SELECT {$category_id},'{$feed_url}','{$feed_name}','{$feed_description}', UTC_TIMESTAMP()) AS tmp 
+                        WHERE NOT EXISTS (SELECT * FROM `SIFTMODE`.`FEEDS` WHERE CATEGORY_ID` = {$category_id} AND (`FEED_URL` = '{$feed_url}' OR `NAME` = '{$feed_name}')) LIMIT 1;";
                         
                 if ($this->db_assistant->query($sql) > 0) {
                     $this->AppLog("Failed to insert feed into `feeds` table. Feed Info: URL '{$feed_url}', NAME '{$feed_name}', DESCRIPTION '{$feed_description}'");
@@ -162,9 +162,7 @@ Class Siftmode {
                     $post_article = $this->db_assistant->sanitize($post_article, false);
                 }
                 
-                $sql = "INSERT INTO `SIFTMODE`.`POSTS` (`FEED_ID`, `LINK`, `PUBDATE`, `TITLE`, `TITLE_WORDS`, `DESCRIPTION`, `DESCRIPTION_WORDS`, `ARTICLE`, `TITLE_DESCRIPTION_WORDS`, `CREATED_ON`) 
-                        SELECT * FROM (SELECT {$feed_id} AS `FEED_ID`, '{$post_link}' AS `LINK`, '{$post_pubdate}' AS `PUBDATE`, '{$post_title}' AS `TITLE`, '{$post_title_words}' AS `TITLE_WORDS`, '{$post_description}' AS `DESCRIPTION`, '{$post_description_words}' AS `DESCRIPTION_WORDS`, '{$post_article}' AS `ARTICLE`, '{$post_title_description_words}' AS `TITLE_DESCRIPTION_WORDS`, UTC_TIMESTAMP() AS `CREATED_ON`) AS tmp 
-                        WHERE NOT EXISTS (SELECT * FROM `SIFTMODE`.`POSTS` WHERE `FEED_ID`= {$feed_id} AND `PUBDATE` = '{$post_pubdate}') LIMIT 1;";    
+                $sql = "CALL `SM_InsertPost` ({$feed_id},'{$post_link}','{$post_pubdate}','{$post_title}','{$post_title_words}','{$post_description}','{$post_description_words}','{$post_article}','{$post_title_description_words}')";    
 
                 if (!in_array($this->db_assistant->query($sql), array(0,1))) { // returns rows inserted so 0 and 1 are okay
                     $this->AppLog("Failed to insert post into `POSTS` table. Feed Info: URL '{$post_link}', TITLE '{$post_title}', DESCRIPTION '{$post_description}', PUBLISHED '{$post_pubdate}'");
@@ -192,7 +190,7 @@ Class Siftmode {
     public function FetchPosts($feed_id) {
         if (is_int($feed_id)) {
             //Get the URL
-            $sql = "SELECT `feed_url`, `save_articles` FROM `siftmode`.`feeds` WHERE `ID`= {$feed_id}";
+            $sql = "CALL `SM_GetFeedURL`({$feed_id})";
             $result = $this->db_assistant->query($sql);
             $rows = mysqli_fetch_array($result);
             $feed_url = $rows[0];
@@ -208,14 +206,10 @@ Class Siftmode {
         }
     }
     
-    public function FetchCategory($user_id, $cat_id) {
-        if (is_int($user_id) && is_int($cat_id)) {
+    public function FetchCategory($cat_id) {
+        if (is_int($cat_id)) {
             //Get the categories' article ids
-            $sql = "SELECT `feeds`.`id` AS  `feed_id` 
-                FROM  `categories` 
-                INNER JOIN  `feeds` ON  `categories`.`user_id` =  `feeds`.`user_id` 
-                AND  `categories`.`id` =  `feeds`.`category_id` 
-                WHERE  `categories`.`user_id` = {$user_id} AND  `categories`.`id` = {$cat_id}";
+            $sql = "CALL `SM_GetCategoryFeedIDs`({$cat_id})";
             $result = $this->db_assistant->query($sql);
             $feeds_updated = 0;
             while($row = mysqli_fetch_array($result))
@@ -226,7 +220,7 @@ Class Siftmode {
                 }
             }     
             if ($feeds_updated > 0) {
-                $sql = "UPDATE `categories` SET `last_run_on`= CURRENT_TIME WHERE `user_id` = {$user_id} AND `id`= {$cat_id}";
+                $sql = "CALL `SM_UpdateCategoriesLastRun`({$cat_id})";
                 $this->db_assistant->query($sql);
             }
         }

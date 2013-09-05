@@ -1,0 +1,6 @@
+CREATE DEFINER=`root`@`localhost` PROCEDURE `SM_GetCategoryFeedIDs`(IN _CATEGORY_ID int)
+    COMMENT 'Author: Cesar Quinteros\nCreated: 2013-09-04\nDescription: Fetches feed ids for a category.'
+SELECT `feeds`.`id` AS  `feed_id` 
+FROM  `categories` 
+INNER JOIN  `feeds` ON `categories`.`id` = `feeds`.`category_id` 
+WHERE `categories`.`id` = _CATEGORY_ID
