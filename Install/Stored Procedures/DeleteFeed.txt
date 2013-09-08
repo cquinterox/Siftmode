@@ -1,0 +1,4 @@
+CREATE DEFINER=`root`@`localhost` PROCEDURE `DeleteFeed`(IN _FEED_ID int)
+    COMMENT 'Author: Cesar Quinteros\nCreated: 2013-09-07\nDescription: Deletes a specific feed by its ID.'
+DELETE FROM `siftmode`.`feeds` 
+WHERE `ID`= _FEED_ID

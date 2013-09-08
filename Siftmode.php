@@ -21,7 +21,7 @@ Class Siftmode {
         $this->app_show_errors = true;
     }
     
-    private function GetLocalTime() {
+    private function getLocalTime() {
         // Simple function that gets the current time for us
         $zone = new DateTimeZone('America/New_York');
         $time = new DateTime(date("Y-m-d g:i:sA", time()));
@@ -29,11 +29,11 @@ Class Siftmode {
         return $time->format('Y-m-d g:i:sA');
     }
     
-    private function AppLog($message) {   
+    private function appLog($message) {   
         // Simple function that writes to the application log
         $error_message = "Application log '" . $this->app_error_log . "' can't be created or is not writable.";
         if (file_exists($this->app_error_log) && is_writable($this->app_error_log)) { 
-            $message = '(' . $this->GetLocalTime() . ') Msg: ' . $message . "\n";
+            $message = '(' . $this->getLocalTime() . ') Msg: ' . $message . "\n";
             error_log($message, 3, $this->app_error_log);
         } else {
             if(!$fileHandle = fopen($this->app_error_log, 'w')) {
@@ -46,7 +46,7 @@ Class Siftmode {
         }
     }
     
-    public function InsertFeed($user_id, $category_id, $feed_url, $feed_name, $feed_description = "") {
+    public function insertFeed($user_id, $category_id, $feed_url, $feed_name, $feed_description = "") {
         if (is_int($category_id) && is_int($user_id)) {
             if (strlen(trim($feed_name)) > 0) {
                 
@@ -54,29 +54,27 @@ Class Siftmode {
                 $feed_name = $this->db_assistant->sanitize($feed_name, true);
                 $feed_description = $this->db_assistant->sanitize($feed_description, true);
                 
-                $sql = "INSERT INTO `SIFTMODE`.`FEEDS` (`CATEGORY_ID`, `FEED_URL`, `NAME`, `DESCRIPTION`, `CREATED_ON`) 
-                        SELECT * FROM (SELECT {$category_id},'{$feed_url}','{$feed_name}','{$feed_description}', UTC_TIMESTAMP()) AS tmp 
-                        WHERE NOT EXISTS (SELECT * FROM `SIFTMODE`.`FEEDS` WHERE CATEGORY_ID` = {$category_id} AND (`FEED_URL` = '{$feed_url}' OR `NAME` = '{$feed_name}')) LIMIT 1;";
+                $sql = "CALL `insertFeed`({$category_id},'{$feed_url}','{$feed_name}','{$feed_description}')";
                         
                 if ($this->db_assistant->query($sql) > 0) {
-                    $this->AppLog("Failed to insert feed into `feeds` table. Feed Info: URL '{$feed_url}', NAME '{$feed_name}', DESCRIPTION '{$feed_description}'");
+                    $this->appLog("The following query failed: {$sql}");
                 }
             } else {
-                $this->AppLog("Failed to insert feed into `feeds` table. The feed name was blank.");
+                $this->appLog("Failed to insert feed into `feeds` table. The feed name was blank.");
             }
         }
     }
    
-    public function DeleteFeed($feed_id) {
+    public function deleteFeed($feed_id) {
         if (is_int($feed_id)) {             
-            $sql = "DELETE FROM `siftmode`.`feeds` WHERE `ID`= {$feed_id}"; // Sift002
+            $sql = "CALL `deleteFeed`({$feed_id})"; // Sift002
             if ($this->db_assistant->query($sql) > 0) {
-                $this->AppLog("Failed to delete feed from `feeds` table. Feed Info: ID '{$feed_id}'");
+                $this->appLog("The following query failed: {$sql}");
             }
         }
     }
     
-    public function InsertCategory($user_id, $category_name, $common_words_array_or_string) {
+    public function insertCategory($user_id, $category_name, $common_words_array_or_string) {
         if (is_int($user_id)) {
             if (strlen(trim($category_name)) > 0) {
                 
@@ -91,26 +89,26 @@ Class Siftmode {
                 
                 $common_words_string = $this->db_assistant->sanitize($common_words_string, true);
                 
-                $sql = "INSERT INTO `siftmode`.`categories` (`USER_ID`, `CATEGORY_NAME`, `COMMON_WORDS`, `CREATED_ON`) VALUES ({$user_id}, '{$category_name}', '{$common_words_string}', UTC_TIMESTAMP());";
+                $sql = "CALL `insertCategory`({$user_id}, '{$category_name}', '{$common_words_string}');";
                 if ($this->db_assistant->query($sql) > 0) {
-                    $this->AppLog("Failed to insert feed category into `categories` table. Category Info: User ID '{$user_id}', CATEGORY NAME '{$category_name}', COMMON WORDS '{$common_words_string}'");
+                    $this->appLog("The following query failed: {$sql}");
                 }
             } else {
-                $this->AppLog("Failed to insert feed category into `categories` table. The category name was blank.");
+                $this->appLog("Tried to insert a category with a blank name.");
             }
         }
     }
     
-    public function DeleteCategory($category_id) {
+    public function deleteCategory($category_id) {
         if (is_int($category_id)) {             
-            $sql = "DELETE FROM `siftmode`.`categories` WHERE `ID`= {$category_id}";
+            $sql = "Call `deleteCategory`({$category_id})";
             if ($this->db_assistant->query($sql) > 0) {
-                $this->AppLog("Failed to delete category from `categories` table. Category Info: ID '{$category_id}'");
+                $this->appLog("The following query failed: {$sql}");
             }
         }
     }
     
-    public function ProcessPostText($input_string, $int_min_letters) { // returns a word array, IMPORTANT: 4 LETTER MIN FOR MATCH AGAINST
+    public function processPostText($input_string, $int_min_letters) { // returns a word array, IMPORTANT: 4 LETTER MIN FOR MATCH AGAINST
             // lowercase text, remove links, usernames
             $text = strtolower($input_string);
             // remove hyperlinks
@@ -131,7 +129,7 @@ Class Siftmode {
             return $tmp_array[0];
     }
     
-    public function ProcessAndInsertPost($feed_id, $post, $fetch_article = 0) {
+    public function processAndInsertPost($feed_id, $post, $fetch_article = 0) {
         
         if (is_int($feed_id)) {
             if ($post != null ) {
@@ -147,12 +145,12 @@ Class Siftmode {
                 $post_title_description = $post->title . ' ' . $post->description;
                 $post_article = NULL;
                 if ($fetch_article) {
-                    $post_article = $this->FetchData($post_link);
+                    $post_article = $this->fetchData($post_link);
                 }
                 // Strip content of data we can't really analyze (for now)
-                $post_title_words = implode(',', $this->ProcessPostText($post_title, 4));
-                $post_description_words = implode(',', $this->ProcessPostText($post_description, 4));
-                $post_title_description_words = implode(',', $this->ProcessPostText($post_title_description, 4));
+                $post_title_words = implode(',', $this->processPostText($post_title, 4)); // 4 characters because of a full-text search limitation
+                $post_description_words = implode(',', $this->processPostText($post_description, 4));
+                $post_title_description_words = implode(',', $this->processPostText($post_title_description, 4));
 
                 // Now lets strip excess characters off before saving
                 $post_title = $this->db_assistant->sanitize($post_title, true);
@@ -162,19 +160,19 @@ Class Siftmode {
                     $post_article = $this->db_assistant->sanitize($post_article, false);
                 }
                 
-                $sql = "CALL `SM_InsertPost` ({$feed_id},'{$post_link}','{$post_pubdate}','{$post_title}','{$post_title_words}','{$post_description}','{$post_description_words}','{$post_article}','{$post_title_description_words}')";    
+                $sql = "CALL `InsertPost` ({$feed_id},'{$post_link}','{$post_pubdate}','{$post_title}','{$post_title_words}','{$post_description}','{$post_description_words}','{$post_article}','{$post_title_description_words}')";    
 
                 if (!in_array($this->db_assistant->query($sql), array(0,1))) { // returns rows inserted so 0 and 1 are okay
-                    $this->AppLog("Failed to insert post into `POSTS` table. Feed Info: URL '{$post_link}', TITLE '{$post_title}', DESCRIPTION '{$post_description}', PUBLISHED '{$post_pubdate}'");
+                    $this->appLog("The following query failed: {$sql}");
                 }
             } else {
-                $this->AppLog("Failed to insert post into `POSTS` table. The feed name was blank.");
+                $this->appLog("Failed to insert post into `POSTS` table. The feed name was blank.");
             }
         }
     }
     
         
-    function FetchData($url) { /* gets the data from a URL */
+    function fetchData($url) { /* gets the data from a URL */
             $ch = curl_init();
             $timeout = 5;
             curl_setopt($ch, CURLOPT_URL, $url);
@@ -187,43 +185,73 @@ Class Siftmode {
             return $data;
     }
 
-    public function FetchPosts($feed_id) {
+    public function fetchPosts($feed_id) {
         if (is_int($feed_id)) {
             //Get the URL
-            $sql = "CALL `SM_GetFeedURL`({$feed_id})";
+            $sql = "CALL `GetFeedURL`({$feed_id})";
             $result = $this->db_assistant->query($sql);
             $rows = mysqli_fetch_array($result);
             $feed_url = $rows[0];
             $fetch_articles = (int)$rows[1];
             
             // Fetch posts
-            $data = $this->FetchData($feed_url);
+            $data = $this->fetchData($feed_url);
             $posts = new SimpleXmlElement($data);
             
             foreach($posts->channel->item as $post) {
-                $this->ProcessAndInsertPost($feed_id, $post, $fetch_articles);
+                $this->processAndInsertPost($feed_id, $post, $fetch_articles);
             }
         }
     }
     
-    public function FetchCategory($cat_id) {
+    public function fetchCategory($cat_id) {
         if (is_int($cat_id)) {
             //Get the categories' article ids
-            $sql = "CALL `SM_GetCategoryFeedIDs`({$cat_id})";
+            $sql = "CALL `GetCategoryFeedIDs`({$cat_id})";
             $result = $this->db_assistant->query($sql);
             $feeds_updated = 0;
             while($row = mysqli_fetch_array($result))
             {
                 if (is_int($feed_id = (int)$row['feed_id'])) {
-                    $this->FetchPosts($feed_id);
+                    $this->fetchPosts($feed_id);
                     $feeds_updated++;
                 }
             }     
             if ($feeds_updated > 0) {
-                $sql = "CALL `SM_UpdateCategoriesLastRun`({$cat_id})";
+                $sql = "CALL `UpdateCategoriesLastRun`({$cat_id})";
                 $this->db_assistant->query($sql);
             }
         }
     }
+    
+    public function getSummary() {
+                
+        set_time_limit(10000); // seconds
+        
+        $summaries = new stdClass();
+        $summaries->id = 1;
+        $summaries->start_time = "yesterday";
+        $summaries->end_time = "today";
+        $summaries->category_id = 2;
+        $summaries->user_id = 3;
+        $list = array();
+        
+        $result = $this->db_assistant->query("select * from `summary_data`");
+
+        while($row = mysqli_fetch_array($result))
+        {
+            $summary = new stdClass();
+            $summary->feed_id = $row['feed_id'];
+            $summary->match_id = $row['match_id'];
+            $summary->match_priority = $row['match_priority'];
+            $summary->match_string = $row['match_string'];
+            $summary->post_id = $row['post_id'];
+            array_push($list, $summary);
+        } 
+        
+        $summaries->summary_list = $list;
+        return json_encode($summaries);
+    }
 }
+
 ?>

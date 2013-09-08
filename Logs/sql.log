@@ -1,3 +1,0 @@
-(September 5, 2013 12:22:28 AM) Error: 1064: You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near '`Sift_004 (2,'http://www.bbc.co.uk/news/world-us-canada-23967190#sa-ns_mchannel=' at line 1
-(September 5, 2013 12:24:23 AM) Error: 1064: You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near '`Sift_004 (2,'http://www.bbc.co.uk/news/world-us-canada-23967190#sa-ns_mchannel=' at line 1
-(September 5, 2013 12:25:21 AM) Error: 1054: Unknown column '_POST_TITLE_WORD' in 'field list'

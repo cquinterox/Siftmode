@@ -3,7 +3,7 @@
 -- http://www.phpmyadmin.net
 --
 -- Host: localhost
--- Generation Time: Sep 05, 2013 at 04:39 AM
+-- Generation Time: Sep 07, 2013 at 04:55 AM
 -- Server version: 5.6.13
 -- PHP Version: 5.5.3
 
@@ -82,7 +82,7 @@ CREATE TABLE IF NOT EXISTS `posts` (
   PRIMARY KEY (`id`),
   UNIQUE KEY `id` (`id`),
   FULLTEXT KEY `title_description_words` (`title_description_words`)
-) ENGINE=InnoDB  DEFAULT CHARSET=latin1 AUTO_INCREMENT=145 ;
+) ENGINE=InnoDB  DEFAULT CHARSET=latin1 AUTO_INCREMENT=246 ;
 
 -- --------------------------------------------------------
 

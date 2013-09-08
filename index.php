@@ -1,7 +1,10 @@
 <?php
     include_once 'Siftmode.php';
     $x = new Siftmode();
-    $x->FetchCategory(2);
+    //$x->fetchCategory(2);
+
+   print($x->getSummary());
+
+
+
 ?>
-
-

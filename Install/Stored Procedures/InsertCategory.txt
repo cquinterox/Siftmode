@@ -1,0 +1,6 @@
+CREATE DEFINER=`root`@`localhost` PROCEDURE `InsertCategory`(IN _USER_ID int, IN _CATEGORY_NAME varchar(50), IN _COMMON_WORDS_STRING text)
+    COMMENT 'Author: Cesar Quinteros\nCreated: 2013-09-07\nDescription: Inserts a new feeds category.	'
+INSERT INTO `siftmode`.`categories` 
+(`USER_ID`, `CATEGORY_NAME`, `COMMON_WORDS`, `CREATED_ON`) 
+VALUES 
+(_USER_ID, _CATEGORY_NAME, _COMMON_WORDS_STRING, UTC_TIMESTAMP())

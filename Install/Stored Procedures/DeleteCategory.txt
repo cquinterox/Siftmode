@@ -1,0 +1,3 @@
+CREATE DEFINER=`root`@`localhost` PROCEDURE `DeleteCategory`(IN _CATEGORY_ID int)
+    COMMENT 'Author: Cesar Quinteros\nCreated: 2013-09-07\nDescription: Deletes a category of feeds but not the feeds themselves.'
+DELETE FROM `siftmode`.`categories` WHERE `ID`= _CATEGORY_ID
