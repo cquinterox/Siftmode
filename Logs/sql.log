@@ -1,0 +1,15 @@
+(September 11, 2013 12:02:48 AM) Error: 1064: You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near '00:00:00)' at line 1
+(September 11, 2013 12:02:48 AM) Error: 1064: You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near '00:00:00)' at line 1
+(September 11, 2013 12:03:06 AM) Error: 1064: You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near '00:00:00)' at line 1
+(September 11, 2013 12:03:08 AM) Error: 1064: You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near '00:00:00)' at line 1
+(September 11, 2013 12:06:53 AM) Error: 1064: You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near '00:00:00)' at line 1
+(September 11, 2013 12:08:53 AM) Error: 0: 
+(September 11, 2013 12:55:21 AM) Error: 1048: Column 'id' cannot be null
+(September 11, 2013 12:55:45 AM) Error: 1048: Column 'id' cannot be null
+(September 11, 2013 12:56:11 AM) Error: 1364: Field 'id' doesn't have a default value
+(September 11, 2013 12:57:12 AM) Error: 1364: Field 'id' doesn't have a default value
+(September 11, 2013 1:00:20 AM) Error: 1054: Unknown column 'NOW' in 'field list'
+(September 11, 2013 1:01:15 AM) Error: 1054: Unknown column 'NOW' in 'field list'
+(September 11, 2013 11:55:33 PM) Error: 1136: Column count doesn't match value count at row 1
+(September 11, 2013 11:57:13 PM) Error: 1136: Column count doesn't match value count at row 1
+(September 11, 2013 11:57:43 PM) Error: 1136: Column count doesn't match value count at row 1

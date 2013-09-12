@@ -1,0 +1,288 @@
+CREATE DEFINER=`root`@`localhost` PROCEDURE `Core_Summarize`(IN _CATEGORY_ID int, IN _START_TIME timestamp, IN _SUMMARY_TYPE varchar(1))
+BEGIN
+
+DECLARE _END_TIME timestamp;
+
+/* SET GLOBAL max_allowed_packet = 1073741824; */
+SET SESSION group_concat_max_len = 1073741824;
+
+IF _SUMMARY_TYPE = 'D' THEN
+	SET _END_TIME = ADDTIME(_START_TIME, '23:59:59');
+END IF;
+IF _SUMMARY_TYPE = 'W' THEN
+	SET _END_TIME = DATE_ADD(_START_TIME, INTERVAL 6 DAY);
+	SET _END_TIME = ADDTIME(_END_TIME, '23:59:59');
+END IF;
+IF _SUMMARY_TYPE = 'M' THEN
+	SET _END_TIME = DATE_ADD(_START_TIME, INTERVAL 1 MONTH);
+	SET _END_TIME = ADDTIME(_END_TIME, '-1 00:00:00');
+	SET _END_TIME = ADDTIME(_END_TIME, '23:59:59');
+END IF;
+IF _SUMMARY_TYPE = 'Y' THEN
+	SET _END_TIME = DATE_ADD(_START_TIME, INTERVAL 1 YEAR);
+	SET _END_TIME = ADDTIME(_END_TIME, '-1 00:00:00');
+	SET _END_TIME = ADDTIME(_END_TIME, '23:59:59');
+END IF;
+/* 
+
+Separate the data we need into a temp table for easier lookup.
+
+*/
+DROP TABLE IF EXISTS `siftmode`.`tmpScopeData`;
+CREATE TABLE `siftmode`.`tmpScopeData`
+(
+	`id` int(11) NOT NULL AUTO_INCREMENT,
+	`feed_id` int(11), 
+	`post_id` int(11), 
+	`link` text, 
+	`pubdate` timestamp,
+	`title_description_words` longtext,
+	`word_set_match_id` int(11),
+	`word_set_match_priority` int(11),
+	`word_set_matches` varchar(155),
+	UNIQUE KEY `ID` (`ID`),
+	FULLTEXT KEY `title_description_words` (`title_description_words`)
+)
+ENGINE=InnoDB DEFAULT CHARSET=latin1 AUTO_INCREMENT=1
+AS 
+(
+	SELECT 
+	`feeds`.`id` as `feed_id`, 
+	`posts`.`id` as `post_id`, 
+	`posts`.`link` as `link`, 
+	`posts`.`pubdate`,
+	`posts`.`title_description_words` as `title_description_words`,
+	NULL as `word_set_match_id`,
+	NULL as `word_set_match_priority`,
+	NULL as `word_set_matches`
+	FROM `siftmode`.`feeds`  
+	LEFT JOIN  `siftmode`.`posts` 
+	ON  `feeds`.`id` =  `posts`.`feed_id`  
+	WHERE  `feeds`.`category_id` = _CATEGORY_ID AND `posts`.`pubdate` BETWEEN  _START_TIME AND _END_TIME
+	ORDER BY `posts`.`pubdate` DESC
+);
+
+/* 
+
+Insert all words into a temp table 
+
+*/
+DROP TABLE IF EXISTS `siftmode`.`tmpAllWordList`;
+CREATE TABLE `siftmode`.`tmpAllWordList` 
+(
+	`id` int(11) NOT NULL AUTO_INCREMENT, 
+	`word` VARCHAR(50), 
+	`count` int(11) DEFAULT 0, 
+	FULLTEXT KEY `word` (`word`), 
+	UNIQUE KEY `id` (`id`)) 
+	ENGINE=InnoDB DEFAULT CHARSET=latin1 AUTO_INCREMENT=1;
+	SET @START = "INSERT INTO `siftmode`.`tmpAllWordList` (`word`) VALUES ";
+	SET @HEADLINE_WORDS = REPLACE(CONCAT("('", REPLACE((SELECT GROUP_CONCAT(`tmpScopeData`.`title_description_words`) FROM `siftmode`.`tmpScopeData`), "," , "'),('"), "');"), " ", "");
+	SET @SQL = CONCAT(@START,@HEADLINE_WORDS
+);
+
+PREPARE tmpAllwords FROM @SQL;
+EXECUTE tmpAllwords;
+DEALLOCATE PREPARE tmpAllwords;
+
+/* 
+
+Copy unique words into a temp table and order by the amount of times they repeat. Check with our config database to see repeat requirements.
+
+*/
+IF _SUMMARY_TYPE = 'D' THEN
+	SET @REQ_MIN_WORD_COUNT = (SELECT MAX(`day_min`) AS `min` FROM `word_count_reqs` WHERE `word_count` BETWEEN 0 AND (SELECT count(*) FROM `siftmode`.`tmpAllWordList`));
+END IF;
+IF _SUMMARY_TYPE = 'W' THEN
+	SET @REQ_MIN_WORD_COUNT = (SELECT MAX(`week_min`) AS `min` FROM `word_count_reqs` WHERE `word_count` BETWEEN 0 AND (SELECT count(*) FROM `siftmode`.`tmpAllWordList`));
+END IF;
+IF _SUMMARY_TYPE = 'M' THEN
+	SET @REQ_MIN_WORD_COUNT = (SELECT MAX(`month_min`) AS `min` FROM `word_count_reqs` WHERE `word_count` BETWEEN 0 AND (SELECT count(*) FROM `siftmode`.`tmpAllWordList`));
+END IF;
+IF _SUMMARY_TYPE = 'Y' THEN
+	SET @REQ_MIN_WORD_COUNT = (SELECT MAX(`year_min`) AS `min` FROM `word_count_reqs` WHERE `word_count` BETWEEN 0 AND (SELECT count(*) FROM `siftmode`.`tmpAllWordList`));
+END IF;
+
+DROP TABLE IF EXISTS `siftmode`.`tmpAllWordListSorted`;
+CREATE TABLE `siftmode`.`tmpAllWordListSorted`
+(
+`id` int(11) NOT NULL AUTO_INCREMENT, 
+`word` VARCHAR(50), 
+`count` int(11) DEFAULT 0, 
+FULLTEXT KEY `word` (`word`),
+UNIQUE KEY `id` (`id`)) 
+ENGINE=InnoDB DEFAULT CHARSET=latin1 AUTO_INCREMENT=1 AS 
+(
+	SELECT `word`, count(*) as `count` 
+	FROM `siftmode`.`tmpAllWordList` 
+	GROUP BY `word` 
+	HAVING count(`word`)  >= @REQ_MIN_WORD_COUNT 
+	ORDER BY `count` DESC
+);
+
+/* Delete all predetermined 'common' words from our temp table relevant to our category or the base category. */
+SET @START = "DELETE FROM `siftmode`.`tmpAllWordListSorted` WHERE `word` IN(";
+SET @WORDS = REPLACE(CONCAT("'", REPLACE((SELECT GROUP_CONCAT(`common_words`) AS data FROM `siftmode`.`categories` WHERE `id` IN(1, _CATEGORY_ID)), ",", "','"), "'"), " ", "");
+SET @END = ");";
+SET @SQL = CONCAT(@START,@WORDS, @END);
+
+PREPARE tmpAllwordsSorted FROM @SQL;
+EXECUTE tmpAllwordsSorted;
+/* Table cleanup */
+DROP TEMPORARY TABLE IF EXISTS `siftmode`.`tmpAllWordList`;
+DEALLOCATE PREPARE tmpAllwordsSorted;
+
+/* 
+
+	Workaround since temp tables can't be used more than once 
+
+*/
+DROP TEMPORARY TABLE IF EXISTS `siftmode`.`tmp1`;
+CREATE TEMPORARY TABLE `siftmode`.`tmp1` AS (SELECT `Word` FROM `siftmode`.`tmpAllWordListSorted`);
+DROP TEMPORARY TABLE IF EXISTS `siftmode`.`tmp2`;
+CREATE TEMPORARY TABLE `siftmode`.`tmp2` AS (SELECT `Word` FROM `siftmode`.`tmpAllWordListSorted`);
+DROP TEMPORARY TABLE IF EXISTS `siftmode`.`tmp3`;
+CREATE TEMPORARY TABLE `siftmode`.`tmp3` AS (SELECT `Word` FROM `siftmode`.`tmpAllWordListSorted`);
+
+/* Table cleanup */
+DROP TEMPORARY TABLE IF EXISTS `siftmode`.`tmpAllWordListSorted`;
+
+DROP TABLE IF EXISTS `siftmode`.`tmpWordset`;
+CREATE TABLE `siftmode`.`tmpWordset` (`id` int(11) NOT NULL AUTO_INCREMENT, `word1` varchar(50), `word2` varchar(50), `word3` varchar(50), FULLTEXT (`word1`, `word2`, `word3`), UNIQUE KEY `id` (`id`)) ENGINE=InnoDB DEFAULT CHARSET=latin1 AUTO_INCREMENT=1;
+INSERT INTO `siftmode`.`tmpWordset` SELECT NULL as `id`, `tmp1`.word as `word1`, `tmp2`.word as `word2`, `tmp3`.word as `word3` FROM `tmp1`, `tmp2`,`tmp3` WHERE (`tmp1`.word <> `tmp2`.word) AND (`tmp1`.word <> `tmp3`.word) AND (`tmp2`.word <> `tmp3`.word);
+
+/* Table cleanup */
+DROP TEMPORARY TABLE IF EXISTS `siftmode`.`tmp1`;
+DROP TEMPORARY TABLE IF EXISTS `siftmode`.`tmp2`;
+DROP TEMPORARY TABLE IF EXISTS `siftmode`.`tmp3`;
+
+/* Loop through each group of top words. Assign each match a priority and the wordset it matched against. */
+SELECT MIN(`ID`), MAX(`ID`) INTO @STARTID, @ENDID FROM `siftmode`.`tmpWordset` LIMIT 1;
+WHILE @STARTID <= @ENDID DO 
+
+		/* Put our words into variables */
+		SELECT `word1`, `word2`, `word3` INTO @W1, @W2, @W3 FROM `siftmode`.`tmpWordset` WHERE ID = @STARTID LIMIT 1;
+		
+		/* Are there any posts left to pick from? */
+		SET @SQL = "SELECT EXISTS(SELECT 1 FROM `siftmode`.`tmpScopeData` WHERE (`word_set_match_id` IS NULL) AND (`word_set_match_priority` IS NULL) LIMIT 1) INTO @HasRowsWithoutMatches";
+		PREPARE CheckRows FROM @SQL;
+		EXECUTE CheckRows;
+		DEALLOCATE PREPARE CheckRows;
+
+		IF @HasRowsWithoutMatches = 1 THEN
+			
+			SET @AffectedRow = 0;
+			
+			/* Priority 1 */
+			SET @SEARCH_STRING = CONCAT("+", @W1,"+", @W2,"+", @W3);
+			SET @SQL = CONCAT("UPDATE `siftmode`.`tmpScopeData` SET `word_set_match_id` = ", @STARTID, ", `word_set_match_priority` = 1, `word_set_matches` = '", @SEARCH_STRING, "' WHERE MATCH(`title_description_words`) AGAINST('", @SEARCH_STRING, "' IN BOOLEAN MODE) AND `word_set_match_id` IS NULL AND `word_set_match_priority` IS NULL;");
+		
+			PREPARE FindMatch FROM @SQL;
+			EXECUTE FindMatch;
+			SET @AffectedRow = ROW_COUNT();
+			DEALLOCATE PREPARE FindMatch;
+			
+			IF @AffectedRow = 0 THEN
+				/* Priority 2 */
+				SET @SEARCH_STRING = CONCAT("+", @W1,"+", @W2,"-", @W3);
+				SET @SQL = CONCAT("UPDATE `siftmode`.`tmpScopeData` SET `word_set_match_id` = ", @STARTID, ", `word_set_match_priority` = 2, `word_set_matches` = '", @SEARCH_STRING , "' WHERE MATCH(`title_description_words`) AGAINST('", @SEARCH_STRING, "' IN BOOLEAN MODE) AND `word_set_match_id` IS NULL AND `word_set_match_priority` IS NULL;");
+
+				PREPARE FindMatch FROM @SQL;
+				EXECUTE FindMatch;
+				SET @AffectedRow = ROW_COUNT();
+				DEALLOCATE PREPARE FindMatch;	
+			END IF;
+
+			IF @AffectedRow = 0 THEN
+				/* Priority 3 */
+				SET @SEARCH_STRING = CONCAT("+", @W1,"-", @W2,"+", @W3);
+				SET @SQL = CONCAT("UPDATE `siftmode`.`tmpScopeData` SET `word_set_match_id` = ", @STARTID, ", `word_set_match_priority` = 3 , `word_set_matches` = '", @SEARCH_STRING , "' WHERE MATCH(`title_description_words`) AGAINST('", @SEARCH_STRING, "' IN BOOLEAN MODE) AND `word_set_match_id` IS NULL AND `word_set_match_priority` IS NULL;");
+
+				PREPARE FindMatch FROM @SQL;
+				EXECUTE FindMatch;
+				SET @AffectedRow = ROW_COUNT();
+				DEALLOCATE PREPARE FindMatch;
+			END IF;
+
+			IF @AffectedRow = 0 THEN
+				/* Priority 4 */
+				SET @SEARCH_STRING = CONCAT("-", @W1,"+", @W2,"+", @W3);
+				SET @SQL = CONCAT("UPDATE `siftmode`.`tmpScopeData` SET `word_set_match_id` = ", @STARTID, ", `word_set_match_priority` = 4 , `word_set_matches` = '", @SEARCH_STRING, "' WHERE MATCH(`title_description_words`) AGAINST('", @SEARCH_STRING, "' IN BOOLEAN MODE) AND `word_set_match_id` IS NULL AND `word_set_match_priority` IS NULL;");
+
+				PREPARE FindMatch FROM @SQL;
+				EXECUTE FindMatch;
+				SET @AffectedRow = ROW_COUNT();
+				DEALLOCATE PREPARE FindMatch;
+			END IF;
+
+			IF @AffectedRow = 0 THEN
+				/* Priority 5 */
+				SET @SEARCH_STRING = CONCAT("+", @W1,"-", @W2,"-", @W3);
+				SET @SQL = CONCAT("UPDATE `siftmode`.`tmpScopeData` SET `word_set_match_id` = ", @STARTID, ", `word_set_match_priority` = 5 , `word_set_matches` = '", @SEARCH_STRING ,"' WHERE MATCH(`title_description_words`) AGAINST('", @SEARCH_STRING, "' IN BOOLEAN MODE) AND `word_set_match_id` IS NULL AND `word_set_match_priority` IS NULL;");
+
+				PREPARE FindMatch FROM @SQL;
+				EXECUTE FindMatch;
+				SET @AffectedRow = ROW_COUNT();
+				DEALLOCATE PREPARE FindMatch;
+			END IF;
+
+			IF @AffectedRow = 0 THEN
+				/* Priority 6 */
+				SET @SEARCH_STRING = CONCAT("-", @W1,"+", @W2,"-", @W3);
+				SET @SQL = CONCAT("UPDATE `siftmode`.`tmpScopeData` SET `word_set_match_id` = ", @STARTID, ", `word_set_match_priority` = 6, `word_set_matches` = '", @SEARCH_STRING , "' WHERE MATCH(`title_description_words`) AGAINST('", @SEARCH_STRING, "' IN BOOLEAN MODE) AND `word_set_match_id` IS NULL AND `word_set_match_priority` IS NULL;");
+
+				PREPARE FindMatch FROM @SQL;
+				EXECUTE FindMatch;
+				SET @AffectedRow = ROW_COUNT();
+				DEALLOCATE PREPARE FindMatch;
+			END IF;
+
+			IF @AffectedRow = 0 THEN
+				/* Priority 7 */
+				SET @SEARCH_STRING = CONCAT("-", @W1,"-", @W2,"+", @W3);
+				SET @SQL = CONCAT("UPDATE `siftmode`.`tmpScopeData` SET `word_set_match_id` = ", @STARTID, ", `word_set_match_priority` = 7 , `word_set_matches` = '", @SEARCH_STRING, "' WHERE MATCH(`title_description_words`) AGAINST('", @SEARCH_STRING, "' IN BOOLEAN MODE) AND `word_set_match_id` IS NULL AND `word_set_match_priority` IS NULL;");
+
+				PREPARE FindMatch FROM @SQL;
+				EXECUTE FindMatch;
+				SET @AffectedRow = ROW_COUNT();
+				DEALLOCATE PREPARE FindMatch;
+			END IF;
+
+			SET @STARTID = @STARTID + 1; 
+		ELSE
+			SET @STARTID = @ENDID; 
+		END IF;
+END WHILE;
+/*
+Clear out any previous summaries created for this time frame
+*/
+DELETE FROM `summary_data` WHERE `category_id` = _CATEGORY_ID  AND `type` = _SUMMARY_TYPE AND `start_time` = _START_TIME;
+/*
+Save summary into summary_data table
+*/
+INSERT INTO `siftmode`.`summary_data`(
+SELECT 
+NULL as `id`,
+_CATEGORY_ID AS `category_id`,
+_SUMMARY_TYPE AS `type`,
+_START_TIME AS `start_time`,
+_END_TIME AS `end_time`,
+`tmpScopeData`.`feed_id`,
+`tmpScopeData`.`post_id`,
+`tmpScopeData`.`word_set_match_id` as `match_id`,
+`tmpScopeData`.`word_set_match_priority` as `match_priority`,
+`tmpScopeData`.`word_set_matches` as `match_string`,
+UTC_TIME as `created_on`
+FROM `tmpScopeData`
+INNER JOIN `tmpWordset`
+ON `tmpScopeData`.`word_set_match_id` = `tmpWordset`.`id`
+ORDER BY  `match_id` ASC,`match_priority` ASC);
+
+DROP TABLE IF EXISTS `siftmode`.`tmpAllWordList`;
+DROP TABLE IF EXISTS `siftmode`.`tmpAllWordListSorted`;
+DROP TABLE IF EXISTS `siftmode`.`tmpScopeData`;
+DROP TABLE IF EXISTS `siftmode`.`tmpWordSet`;
+
+SELECT * FROM `summary_data` WHERE `category_id` = _CATEGORY_ID  AND `type` = _SUMMARY_TYPE AND `start_time` = _START_TIME;
+
+END

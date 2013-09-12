@@ -1,4 +1,4 @@
-CREATE DEFINER=`root`@`localhost` PROCEDURE `SM_InsertPost`(IN _FEED_ID integer, IN _POST_LINK text, IN _POST_PUBDATE timestamp, IN _POST_TITLE text, IN _POST_TITLE_WORDS text, IN _POST_DESCRIPTION text, IN _POST_DESCRIPTION_WORDS text, IN _POST_ARTICLE text, IN _POST_TITLE_DESCRIPTION_WORDS text)
+CREATE DEFINER=`root`@`localhost` PROCEDURE `InsertPost`(IN _FEED_ID integer, IN _POST_LINK text, IN _POST_PUBDATE timestamp, IN _POST_TITLE text, IN _POST_TITLE_WORDS text, IN _POST_DESCRIPTION text, IN _POST_DESCRIPTION_WORDS text, IN _POST_ARTICLE text, IN _POST_TITLE_DESCRIPTION_WORDS text)
     COMMENT 'Author: Cesar Quinteros\nCreated: 2013-09-04\nDescription: Inserts processed post data.'
 INSERT INTO `SIFTMODE`.`POSTS` 
 (

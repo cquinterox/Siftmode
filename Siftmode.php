@@ -224,33 +224,87 @@ Class Siftmode {
         }
     }
     
-    public function getSummary() {
-                
-        set_time_limit(10000); // seconds
+    public function generateSummary($cat_id, $start_time, $type) {
         
-        $summaries = new stdClass();
-        $summaries->id = 1;
-        $summaries->start_time = "yesterday";
-        $summaries->end_time = "today";
-        $summaries->category_id = 2;
-        $summaries->user_id = 3;
-        $list = array();
-        
-        $result = $this->db_assistant->query("select * from `summary_data`");
+        if (is_int($cat_id) && $this->isValidDate($start_time) && $this->isValidType($type)) {
+            // This might take a while so lets set some time limits
+            $time_limit = 0; // Seconds
+            switch ($time_limit) {
+                case 'D':
+                    $time_limit = 180; // 3 mins
+                    break;
+                case 'W':
+                    $time_limit = 360; // 6 mins
+                    break;
+                case 'M':
+                    $time_limit = 1800; // 30 mins
+                    break;
+                case 'Y':
+                    $time_limit = 21600; // 360 mins
+                    break;
+                default:
+                    $time_limit = 180; // 3 mins
+                    break;
+            }
+            set_time_limit($time_limit); 
+            
+            // Add an stdClass so we could add some meta data to our summary before we save it
+            $summaries = new stdClass();
+            $summaries->category_id = $cat_id;
+            $summaries->type = $type;
+            $summaries->start_time = $start_time;
+            $summaries->end_time = null;
 
-        while($row = mysqli_fetch_array($result))
-        {
-            $summary = new stdClass();
-            $summary->feed_id = $row['feed_id'];
-            $summary->match_id = $row['match_id'];
-            $summary->match_priority = $row['match_priority'];
-            $summary->match_string = $row['match_string'];
-            $summary->post_id = $row['post_id'];
-            array_push($list, $summary);
-        } 
+            // Store summary rows here.
+            $summary_list = array();    
         
-        $summaries->summary_list = $list;
-        return json_encode($summaries);
+            // Process and return a summary
+            $result = $this->db_assistant->query("CALL `Core_Summarize`({$cat_id},'{$start_time}','{$type}')");
+
+            // Add our summary rows to our summary_list
+            while($row = mysqli_fetch_array($result))
+            {
+                $summary = new stdClass();
+                $summary->feed_id = $row['feed_id'];
+                $summary->post_id = $row['post_id'];
+                $summary->match_id = $row['match_id'];
+                $summary->match_priority = $row['match_priority'];
+                $summary->match_string = $row['match_string'];
+                array_push($summary_list, $summary);
+                if ($summaries->end_time == null) {
+                    $summaries->end_time = $row['end_time'];
+                }
+            } 
+            
+            $summaries->summary_list = $summary_list;
+            // Convert to JSON
+            $json_string = json_encode($summaries);
+            
+            // Save the summary data into the summaries table
+            $result = $this->db_assistant->query("CALL `Core_SaveSummary`({$cat_id},'{$start_time}','{$type}','{$json_string}')");
+            
+            if ($result < 1) {
+                $this->appLog("The following summarization yielded no results: 'CALL `Core_SaveSummary`({$cat_id},'{$start_time}','{$type}','{$json_string}')'");
+            }
+        }
+    }
+    private function isValidType($type) {
+        $accepted_types = array('D', 'W', 'M', 'Y');
+        if (!in_array($type, $accepted_types)) {
+            return false;
+            $this->appLog("The following summary type is invalid: {$type}");
+        } else {
+            return true;
+        }
+    }
+    private function isValidDate($date) {
+        date_default_timezone_set('UTC');
+        if (($timestamp = strtotime($date)) === false) {
+            return false;
+             $this->appLog("The following date is invalid: {$date}");
+        } else {
+            return true;
+        }
     }
 }
 

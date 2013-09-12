@@ -3,7 +3,7 @@
 -- http://www.phpmyadmin.net
 --
 -- Host: localhost
--- Generation Time: Sep 07, 2013 at 04:54 AM
+-- Generation Time: Sep 11, 2013 at 05:07 AM
 -- Server version: 5.6.13
 -- PHP Version: 5.5.3
 
@@ -33,19 +33,14 @@ CREATE TABLE IF NOT EXISTS `categories` (
   `USER_ID` int(11) NOT NULL,
   `CATEGORY_NAME` varchar(50) NOT NULL,
   `COMMON_WORDS` text NOT NULL,
-  `UPDATED_ON` timestamp NULL DEFAULT NULL,
-  `CREATED_ON` timestamp NULL DEFAULT NULL,
+  `UPDATED_ON` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `CREATED_ON` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
   `LAST_RUN_ON` timestamp NULL DEFAULT NULL,
   PRIMARY KEY (`ID`),
   UNIQUE KEY `ID` (`ID`),
   KEY `ID_2` (`ID`,`CATEGORY_NAME`,`LAST_RUN_ON`)
 ) ENGINE=InnoDB  DEFAULT CHARSET=latin1 AUTO_INCREMENT=3 ;
 
---
--- Truncate table before insert `categories`
---
-
-TRUNCATE TABLE `categories`;
 --
 -- Dumping data for table `categories`
 --
@@ -67,17 +62,12 @@ CREATE TABLE IF NOT EXISTS `feeds` (
   `save_articles` bit(1) DEFAULT b'0',
   `name` varchar(32) NOT NULL,
   `description` varchar(256) NOT NULL,
-  `updated_on` timestamp NULL DEFAULT NULL,
-  `created_on` timestamp NULL DEFAULT NULL,
+  `updated_on` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `created_on` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
   UNIQUE KEY `ID` (`id`)
 ) ENGINE=InnoDB  DEFAULT CHARSET=latin1 AUTO_INCREMENT=5 ;
 
---
--- Truncate table before insert `feeds`
---
-
-TRUNCATE TABLE `feeds`;
 --
 -- Dumping data for table `feeds`
 --
@@ -104,18 +94,13 @@ CREATE TABLE IF NOT EXISTS `posts` (
   `description_words` text,
   `article` text,
   `title_description_words` text,
-  `updated_on` timestamp NULL DEFAULT NULL,
-  `created_on` timestamp NULL DEFAULT NULL,
+  `updated_on` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `created_on` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
   UNIQUE KEY `id` (`id`),
   FULLTEXT KEY `title_description_words` (`title_description_words`)
 ) ENGINE=InnoDB  DEFAULT CHARSET=latin1 AUTO_INCREMENT=246 ;
 
---
--- Truncate table before insert `posts`
---
-
-TRUNCATE TABLE `posts`;
 --
 -- Dumping data for table `posts`
 --
@@ -373,74 +358,141 @@ INSERT INTO `posts` (`id`, `feed_id`, `link`, `pubdate`, `title`, `title_words`,
 -- --------------------------------------------------------
 
 --
+-- Table structure for table `summaries`
+--
+
+CREATE TABLE IF NOT EXISTS `summaries` (
+  `category_id` int(11) NOT NULL,
+  `type` varchar(1) NOT NULL DEFAULT '',
+  `start_time` timestamp NOT NULL DEFAULT '0000-00-00 00:00:00',
+  `data` text,
+  `created_on` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_on` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`category_id`,`type`,`start_time`)
+) ENGINE=InnoDB DEFAULT CHARSET=latin1;
+
+--
+-- Dumping data for table `summaries`
+--
+
+INSERT INTO `summaries` (`category_id`, `type`, `start_time`, `data`, `created_on`, `updated_on`) VALUES
+(2, 'W', '2013-09-01 04:00:00', '{"category_id":2,"type":"W","start_time":"2013-09-01 00:00:00","end_time":"2013-09-07 23:59:59","summary_list":[{"feed_id":"4","post_id":"124","match_id":"1","match_priority":"1","match_string":"+president+syria+after"},{"feed_id":"4","post_id":"233","match_id":"1","match_priority":"1","match_string":"+president+syria+after"},{"feed_id":"4","post_id":"243","match_id":"1","match_priority":"1","match_string":"+president+syria+after"},{"feed_id":"4","post_id":"230","match_id":"2","match_priority":"1","match_string":"+over+syria+after"},{"feed_id":"4","post_id":"144","match_id":"3","match_priority":"2","match_string":"+syria+president-after"},{"feed_id":"4","post_id":"129","match_id":"3","match_priority":"2","match_string":"+syria+president-after"},{"feed_id":"4","post_id":"227","match_id":"3","match_priority":"2","match_string":"+syria+president-after"},{"feed_id":"4","post_id":"231","match_id":"3","match_priority":"2","match_string":"+syria+president-after"},{"feed_id":"2","post_id":"1","match_id":"3","match_priority":"2","match_string":"+syria+president-after"},{"feed_id":"4","post_id":"236","match_id":"3","match_priority":"2","match_string":"+syria+president-after"},{"feed_id":"2","post_id":"185","match_id":"3","match_priority":"2","match_string":"+syria+president-after"},{"feed_id":"4","post_id":"120","match_id":"3","match_priority":"2","match_string":"+syria+president-after"},{"feed_id":"4","post_id":"238","match_id":"3","match_priority":"2","match_string":"+syria+president-after"},{"feed_id":"4","post_id":"123","match_id":"3","match_priority":"2","match_string":"+syria+president-after"},{"feed_id":"2","post_id":"22","match_id":"3","match_priority":"2","match_string":"+syria+president-after"},{"feed_id":"4","post_id":"242","match_id":"3","match_priority":"2","match_string":"+syria+president-after"},{"feed_id":"4","post_id":"140","match_id":"3","match_priority":"2","match_string":"+syria+president-after"},{"feed_id":"3","post_id":"105","match_id":"4","match_priority":"3","match_string":"+over-president+after"},{"feed_id":"3","post_id":"202","match_id":"4","match_priority":"3","match_string":"+over-president+after"},{"feed_id":"3","post_id":"106","match_id":"4","match_priority":"3","match_string":"+over-president+after"},{"feed_id":"2","post_id":"15","match_id":"4","match_priority":"3","match_string":"+over-president+after"},{"feed_id":"3","post_id":"210","match_id":"5","match_priority":"2","match_string":"+syria+over-after"},{"feed_id":"3","post_id":"206","match_id":"5","match_priority":"2","match_string":"+syria+over-after"},{"feed_id":"3","post_id":"204","match_id":"5","match_priority":"2","match_string":"+syria+over-after"},{"feed_id":"2","post_id":"146","match_id":"5","match_priority":"2","match_string":"+syria+over-after"},{"feed_id":"2","post_id":"18","match_id":"6","match_priority":"3","match_string":"+president-over+after"},{"feed_id":"4","post_id":"225","match_id":"6","match_priority":"3","match_string":"+president-over+after"},{"feed_id":"3","post_id":"100","match_id":"6","match_priority":"3","match_string":"+president-over+after"},{"feed_id":"2","post_id":"12","match_id":"7","match_priority":"4","match_string":"-president+after+syria"},{"feed_id":"2","post_id":"198","match_id":"8","match_priority":"5","match_string":"+over-after-syria"},{"feed_id":"3","post_id":"72","match_id":"8","match_priority":"5","match_string":"+over-after-syria"},{"feed_id":"4","post_id":"245","match_id":"8","match_priority":"5","match_string":"+over-after-syria"},{"feed_id":"2","post_id":"171","match_id":"8","match_priority":"5","match_string":"+over-after-syria"},{"feed_id":"2","post_id":"188","match_id":"8","match_priority":"5","match_string":"+over-after-syria"},{"feed_id":"4","post_id":"237","match_id":"8","match_priority":"5","match_string":"+over-after-syria"},{"feed_id":"4","post_id":"239","match_id":"8","match_priority":"5","match_string":"+over-after-syria"},{"feed_id":"3","post_id":"63","match_id":"8","match_priority":"5","match_string":"+over-after-syria"},{"feed_id":"2","post_id":"176","match_id":"8","match_priority":"5","match_string":"+over-after-syria"},{"feed_id":"3","post_id":"213","match_id":"8","match_priority":"5","match_string":"+over-after-syria"},{"feed_id":"3","post_id":"212","match_id":"8","match_priority":"5","match_string":"+over-after-syria"},{"feed_id":"2","post_id":"50","match_id":"8","match_priority":"5","match_string":"+over-after-syria"},{"feed_id":"3","post_id":"201","match_id":"8","match_priority":"5","match_string":"+over-after-syria"},{"feed_id":"4","post_id":"139","match_id":"8","match_priority":"5","match_string":"+over-after-syria"},{"feed_id":"4","post_id":"141","match_id":"9","match_priority":"5","match_string":"+after-president-syria"},{"feed_id":"2","post_id":"9","match_id":"9","match_priority":"5","match_string":"+after-president-syria"},{"feed_id":"2","post_id":"42","match_id":"9","match_priority":"5","match_string":"+after-president-syria"},{"feed_id":"3","post_id":"71","match_id":"9","match_priority":"5","match_string":"+after-president-syria"},{"feed_id":"2","post_id":"10","match_id":"9","match_priority":"5","match_string":"+after-president-syria"},{"feed_id":"2","post_id":"39","match_id":"9","match_priority":"5","match_string":"+after-president-syria"},{"feed_id":"4","post_id":"128","match_id":"9","match_priority":"5","match_string":"+after-president-syria"},{"feed_id":"2","post_id":"46","match_id":"9","match_priority":"5","match_string":"+after-president-syria"},{"feed_id":"2","post_id":"186","match_id":"9","match_priority":"5","match_string":"+after-president-syria"},{"feed_id":"2","post_id":"177","match_id":"9","match_priority":"5","match_string":"+after-president-syria"},{"feed_id":"2","post_id":"178","match_id":"9","match_priority":"5","match_string":"+after-president-syria"},{"feed_id":"4","post_id":"222","match_id":"9","match_priority":"5","match_string":"+after-president-syria"},{"feed_id":"2","post_id":"174","match_id":"9","match_priority":"5","match_string":"+after-president-syria"},{"feed_id":"2","post_id":"150","match_id":"9","match_priority":"5","match_string":"+after-president-syria"},{"feed_id":"3","post_id":"207","match_id":"9","match_priority":"5","match_string":"+after-president-syria"},{"feed_id":"3","post_id":"214","match_id":"9","match_priority":"5","match_string":"+after-president-syria"},{"feed_id":"2","post_id":"11","match_id":"9","match_priority":"5","match_string":"+after-president-syria"},{"feed_id":"2","post_id":"151","match_id":"9","match_priority":"5","match_string":"+after-president-syria"},{"feed_id":"3","post_id":"220","match_id":"9","match_priority":"5","match_string":"+after-president-syria"},{"feed_id":"4","post_id":"241","match_id":"9","match_priority":"5","match_string":"+after-president-syria"},{"feed_id":"2","post_id":"167","match_id":"9","match_priority":"5","match_string":"+after-president-syria"},{"feed_id":"4","post_id":"240","match_id":"10","match_priority":"6","match_string":"-over+president-syria"},{"feed_id":"4","post_id":"133","match_id":"10","match_priority":"6","match_string":"-over+president-syria"},{"feed_id":"2","post_id":"154","match_id":"10","match_priority":"6","match_string":"-over+president-syria"},{"feed_id":"3","post_id":"118","match_id":"10","match_priority":"6","match_string":"-over+president-syria"},{"feed_id":"3","post_id":"119","match_id":"10","match_priority":"6","match_string":"-over+president-syria"},{"feed_id":"2","post_id":"16","match_id":"10","match_priority":"6","match_string":"-over+president-syria"},{"feed_id":"4","post_id":"228","match_id":"10","match_priority":"6","match_string":"-over+president-syria"},{"feed_id":"3","post_id":"86","match_id":"10","match_priority":"6","match_string":"-over+president-syria"},{"feed_id":"2","post_id":"41","match_id":"10","match_priority":"6","match_string":"-over+president-syria"},{"feed_id":"2","post_id":"6","match_id":"10","match_priority":"6","match_string":"-over+president-syria"},{"feed_id":"2","post_id":"162","match_id":"10","match_priority":"6","match_string":"-over+president-syria"},{"feed_id":"4","post_id":"127","match_id":"10","match_priority":"6","match_string":"-over+president-syria"},{"feed_id":"4","post_id":"126","match_id":"10","match_priority":"6","match_string":"-over+president-syria"},{"feed_id":"2","post_id":"193","match_id":"11","match_priority":"7","match_string":"-after-over+syria"},{"feed_id":"4","post_id":"221","match_id":"11","match_priority":"7","match_string":"-after-over+syria"},{"feed_id":"4","post_id":"143","match_id":"11","match_priority":"7","match_string":"-after-over+syria"},{"feed_id":"4","post_id":"223","match_id":"11","match_priority":"7","match_string":"-after-over+syria"},{"feed_id":"4","post_id":"134","match_id":"11","match_priority":"7","match_string":"-after-over+syria"},{"feed_id":"4","post_id":"131","match_id":"11","match_priority":"7","match_string":"-after-over+syria"},{"feed_id":"4","post_id":"121","match_id":"11","match_priority":"7","match_string":"-after-over+syria"},{"feed_id":"4","post_id":"125","match_id":"11","match_priority":"7","match_string":"-after-over+syria"},{"feed_id":"3","post_id":"94","match_id":"11","match_priority":"7","match_string":"-after-over+syria"},{"feed_id":"4","post_id":"244","match_id":"11","match_priority":"7","match_string":"-after-over+syria"},{"feed_id":"4","post_id":"137","match_id":"11","match_priority":"7","match_string":"-after-over+syria"}]}', '2013-09-11 04:58:45', '2013-09-11 05:03:45');
+
+-- --------------------------------------------------------
+
+--
 -- Table structure for table `summary_data`
 --
 
 CREATE TABLE IF NOT EXISTS `summary_data` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
-  `summary_id` int(11) NOT NULL,
+  `category_id` int(11) NOT NULL,
+  `type` varchar(1) NOT NULL,
+  `start_time` timestamp NOT NULL DEFAULT '0000-00-00 00:00:00',
+  `end_time` timestamp NOT NULL DEFAULT '0000-00-00 00:00:00',
   `feed_id` int(11) NOT NULL,
   `post_id` int(11) NOT NULL,
   `match_id` int(11) NOT NULL,
   `match_priority` int(11) NOT NULL,
   `match_string` varchar(155) NOT NULL,
-  `created_on` timestamp NOT NULL DEFAULT '0000-00-00 00:00:00' ON UPDATE CURRENT_TIMESTAMP,
-  PRIMARY KEY (`summary_id`,`feed_id`,`id`),
-  UNIQUE KEY `id` (`id`)
-) ENGINE=InnoDB  DEFAULT CHARSET=latin1 AUTO_INCREMENT=14 ;
+  `created_on` timestamp NULL DEFAULT NULL,
+  UNIQUE KEY `id` (`id`),
+  KEY `category_id` (`category_id`,`type`,`start_time`,`end_time`)
+) ENGINE=InnoDB  DEFAULT CHARSET=latin1 AUTO_INCREMENT=3303 ;
 
---
--- Truncate table before insert `summary_data`
---
-
-TRUNCATE TABLE `summary_data`;
 --
 -- Dumping data for table `summary_data`
 --
 
-INSERT INTO `summary_data` (`id`, `summary_id`, `feed_id`, `post_id`, `match_id`, `match_priority`, `match_string`, `created_on`) VALUES
-(3, 1, 2, 17, 2, 5, '+world-year-killed', '2013-08-14 08:28:14'),
-(4, 1, 2, 37, 2, 5, '+world-year-killed', '2013-08-14 08:28:14'),
-(5, 1, 2, 45, 3, 3, '+ramadan-year+killed', '2013-08-14 08:28:14'),
-(6, 1, 2, 32, 3, 3, '+ramadan-year+killed', '2013-08-14 08:28:14'),
-(8, 1, 2, 28, 4, 5, '+year-qaeda-killed', '2013-08-14 08:28:14'),
-(9, 1, 2, 26, 4, 5, '+year-qaeda-killed', '2013-08-14 08:28:14'),
-(10, 1, 2, 31, 5, 6, '-world+qaeda-killed', '2013-08-14 08:28:14'),
-(11, 1, 2, 25, 5, 6, '-world+qaeda-killed', '2013-08-14 08:28:14'),
-(12, 1, 2, 22, 6, 7, '-ramadan-qaeda+killed', '2013-08-14 08:28:14'),
-(13, 1, 2, 46, 6, 7, '-ramadan-qaeda+killed', '2013-08-14 08:28:14'),
-(1, 1, 4, 60, 1, 3, '+qaeda-year+killed', '2013-08-14 08:28:14'),
-(2, 1, 4, 58, 2, 5, '+world-year-killed', '2013-08-14 08:28:14'),
-(7, 1, 4, 59, 4, 5, '+year-qaeda-killed', '2013-08-14 08:28:14');
-
--- --------------------------------------------------------
-
---
--- Table structure for table `summary_list`
---
-
-CREATE TABLE IF NOT EXISTS `summary_list` (
-  `ID` int(11) NOT NULL AUTO_INCREMENT,
-  `STARTTIME` timestamp NOT NULL DEFAULT '0000-00-00 00:00:00',
-  `ENDTIME` timestamp NOT NULL DEFAULT '0000-00-00 00:00:00',
-  `CATEGORY_ID` int(11) NOT NULL DEFAULT '0',
-  `USER_ID` int(11) NOT NULL DEFAULT '0',
-  `RUN_ON` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  PRIMARY KEY (`STARTTIME`,`ENDTIME`,`CATEGORY_ID`,`USER_ID`),
-  UNIQUE KEY `ID` (`ID`)
-) ENGINE=InnoDB  DEFAULT CHARSET=latin1 AUTO_INCREMENT=2 ;
-
---
--- Truncate table before insert `summary_list`
---
-
-TRUNCATE TABLE `summary_list`;
---
--- Dumping data for table `summary_list`
---
-
-INSERT INTO `summary_list` (`ID`, `STARTTIME`, `ENDTIME`, `CATEGORY_ID`, `USER_ID`, `RUN_ON`) VALUES
-(1, '2013-08-11 04:00:00', '2013-08-12 04:00:00', 0, 1, '2013-08-14 04:28:13');
+INSERT INTO `summary_data` (`id`, `category_id`, `type`, `start_time`, `end_time`, `feed_id`, `post_id`, `match_id`, `match_priority`, `match_string`, `created_on`) VALUES
+(3176, 2, 'W', '2013-09-01 04:00:00', '2013-09-08 03:59:59', 4, 124, 1, 1, '+president+syria+after', '2013-09-11 09:03:44'),
+(3177, 2, 'W', '2013-09-01 04:00:00', '2013-09-08 03:59:59', 4, 233, 1, 1, '+president+syria+after', '2013-09-11 09:03:44'),
+(3178, 2, 'W', '2013-09-01 04:00:00', '2013-09-08 03:59:59', 4, 243, 1, 1, '+president+syria+after', '2013-09-11 09:03:44'),
+(3179, 2, 'W', '2013-09-01 04:00:00', '2013-09-08 03:59:59', 4, 230, 2, 1, '+over+syria+after', '2013-09-11 09:03:44'),
+(3180, 2, 'W', '2013-09-01 04:00:00', '2013-09-08 03:59:59', 4, 144, 3, 2, '+syria+president-after', '2013-09-11 09:03:44'),
+(3181, 2, 'W', '2013-09-01 04:00:00', '2013-09-08 03:59:59', 4, 129, 3, 2, '+syria+president-after', '2013-09-11 09:03:44'),
+(3182, 2, 'W', '2013-09-01 04:00:00', '2013-09-08 03:59:59', 4, 227, 3, 2, '+syria+president-after', '2013-09-11 09:03:44'),
+(3183, 2, 'W', '2013-09-01 04:00:00', '2013-09-08 03:59:59', 4, 231, 3, 2, '+syria+president-after', '2013-09-11 09:03:44'),
+(3184, 2, 'W', '2013-09-01 04:00:00', '2013-09-08 03:59:59', 2, 1, 3, 2, '+syria+president-after', '2013-09-11 09:03:44'),
+(3185, 2, 'W', '2013-09-01 04:00:00', '2013-09-08 03:59:59', 4, 236, 3, 2, '+syria+president-after', '2013-09-11 09:03:44'),
+(3186, 2, 'W', '2013-09-01 04:00:00', '2013-09-08 03:59:59', 2, 185, 3, 2, '+syria+president-after', '2013-09-11 09:03:44'),
+(3187, 2, 'W', '2013-09-01 04:00:00', '2013-09-08 03:59:59', 4, 120, 3, 2, '+syria+president-after', '2013-09-11 09:03:44'),
+(3188, 2, 'W', '2013-09-01 04:00:00', '2013-09-08 03:59:59', 4, 238, 3, 2, '+syria+president-after', '2013-09-11 09:03:44'),
+(3189, 2, 'W', '2013-09-01 04:00:00', '2013-09-08 03:59:59', 4, 123, 3, 2, '+syria+president-after', '2013-09-11 09:03:44'),
+(3190, 2, 'W', '2013-09-01 04:00:00', '2013-09-08 03:59:59', 2, 22, 3, 2, '+syria+president-after', '2013-09-11 09:03:44'),
+(3191, 2, 'W', '2013-09-01 04:00:00', '2013-09-08 03:59:59', 4, 242, 3, 2, '+syria+president-after', '2013-09-11 09:03:44'),
+(3192, 2, 'W', '2013-09-01 04:00:00', '2013-09-08 03:59:59', 4, 140, 3, 2, '+syria+president-after', '2013-09-11 09:03:44'),
+(3193, 2, 'W', '2013-09-01 04:00:00', '2013-09-08 03:59:59', 3, 105, 4, 3, '+over-president+after', '2013-09-11 09:03:44'),
+(3194, 2, 'W', '2013-09-01 04:00:00', '2013-09-08 03:59:59', 3, 202, 4, 3, '+over-president+after', '2013-09-11 09:03:44'),
+(3195, 2, 'W', '2013-09-01 04:00:00', '2013-09-08 03:59:59', 3, 106, 4, 3, '+over-president+after', '2013-09-11 09:03:44'),
+(3196, 2, 'W', '2013-09-01 04:00:00', '2013-09-08 03:59:59', 2, 15, 4, 3, '+over-president+after', '2013-09-11 09:03:44'),
+(3197, 2, 'W', '2013-09-01 04:00:00', '2013-09-08 03:59:59', 3, 210, 5, 2, '+syria+over-after', '2013-09-11 09:03:44'),
+(3198, 2, 'W', '2013-09-01 04:00:00', '2013-09-08 03:59:59', 3, 206, 5, 2, '+syria+over-after', '2013-09-11 09:03:44'),
+(3199, 2, 'W', '2013-09-01 04:00:00', '2013-09-08 03:59:59', 3, 204, 5, 2, '+syria+over-after', '2013-09-11 09:03:44'),
+(3200, 2, 'W', '2013-09-01 04:00:00', '2013-09-08 03:59:59', 2, 146, 5, 2, '+syria+over-after', '2013-09-11 09:03:44'),
+(3201, 2, 'W', '2013-09-01 04:00:00', '2013-09-08 03:59:59', 2, 18, 6, 3, '+president-over+after', '2013-09-11 09:03:44'),
+(3202, 2, 'W', '2013-09-01 04:00:00', '2013-09-08 03:59:59', 4, 225, 6, 3, '+president-over+after', '2013-09-11 09:03:44'),
+(3203, 2, 'W', '2013-09-01 04:00:00', '2013-09-08 03:59:59', 3, 100, 6, 3, '+president-over+after', '2013-09-11 09:03:44'),
+(3204, 2, 'W', '2013-09-01 04:00:00', '2013-09-08 03:59:59', 2, 12, 7, 4, '-president+after+syria', '2013-09-11 09:03:44'),
+(3205, 2, 'W', '2013-09-01 04:00:00', '2013-09-08 03:59:59', 2, 198, 8, 5, '+over-after-syria', '2013-09-11 09:03:44'),
+(3206, 2, 'W', '2013-09-01 04:00:00', '2013-09-08 03:59:59', 3, 72, 8, 5, '+over-after-syria', '2013-09-11 09:03:44'),
+(3207, 2, 'W', '2013-09-01 04:00:00', '2013-09-08 03:59:59', 4, 245, 8, 5, '+over-after-syria', '2013-09-11 09:03:44'),
+(3208, 2, 'W', '2013-09-01 04:00:00', '2013-09-08 03:59:59', 2, 171, 8, 5, '+over-after-syria', '2013-09-11 09:03:44'),
+(3209, 2, 'W', '2013-09-01 04:00:00', '2013-09-08 03:59:59', 2, 188, 8, 5, '+over-after-syria', '2013-09-11 09:03:44'),
+(3210, 2, 'W', '2013-09-01 04:00:00', '2013-09-08 03:59:59', 4, 237, 8, 5, '+over-after-syria', '2013-09-11 09:03:44'),
+(3211, 2, 'W', '2013-09-01 04:00:00', '2013-09-08 03:59:59', 4, 239, 8, 5, '+over-after-syria', '2013-09-11 09:03:44'),
+(3212, 2, 'W', '2013-09-01 04:00:00', '2013-09-08 03:59:59', 3, 63, 8, 5, '+over-after-syria', '2013-09-11 09:03:44'),
+(3213, 2, 'W', '2013-09-01 04:00:00', '2013-09-08 03:59:59', 2, 176, 8, 5, '+over-after-syria', '2013-09-11 09:03:44'),
+(3214, 2, 'W', '2013-09-01 04:00:00', '2013-09-08 03:59:59', 3, 213, 8, 5, '+over-after-syria', '2013-09-11 09:03:44'),
+(3215, 2, 'W', '2013-09-01 04:00:00', '2013-09-08 03:59:59', 3, 212, 8, 5, '+over-after-syria', '2013-09-11 09:03:44'),
+(3216, 2, 'W', '2013-09-01 04:00:00', '2013-09-08 03:59:59', 2, 50, 8, 5, '+over-after-syria', '2013-09-11 09:03:44'),
+(3217, 2, 'W', '2013-09-01 04:00:00', '2013-09-08 03:59:59', 3, 201, 8, 5, '+over-after-syria', '2013-09-11 09:03:44'),
+(3218, 2, 'W', '2013-09-01 04:00:00', '2013-09-08 03:59:59', 4, 139, 8, 5, '+over-after-syria', '2013-09-11 09:03:44'),
+(3219, 2, 'W', '2013-09-01 04:00:00', '2013-09-08 03:59:59', 4, 141, 9, 5, '+after-president-syria', '2013-09-11 09:03:44'),
+(3220, 2, 'W', '2013-09-01 04:00:00', '2013-09-08 03:59:59', 2, 9, 9, 5, '+after-president-syria', '2013-09-11 09:03:44'),
+(3221, 2, 'W', '2013-09-01 04:00:00', '2013-09-08 03:59:59', 2, 42, 9, 5, '+after-president-syria', '2013-09-11 09:03:44'),
+(3222, 2, 'W', '2013-09-01 04:00:00', '2013-09-08 03:59:59', 3, 71, 9, 5, '+after-president-syria', '2013-09-11 09:03:44'),
+(3223, 2, 'W', '2013-09-01 04:00:00', '2013-09-08 03:59:59', 2, 10, 9, 5, '+after-president-syria', '2013-09-11 09:03:44'),
+(3224, 2, 'W', '2013-09-01 04:00:00', '2013-09-08 03:59:59', 2, 39, 9, 5, '+after-president-syria', '2013-09-11 09:03:44'),
+(3225, 2, 'W', '2013-09-01 04:00:00', '2013-09-08 03:59:59', 4, 128, 9, 5, '+after-president-syria', '2013-09-11 09:03:44'),
+(3226, 2, 'W', '2013-09-01 04:00:00', '2013-09-08 03:59:59', 2, 46, 9, 5, '+after-president-syria', '2013-09-11 09:03:44'),
+(3227, 2, 'W', '2013-09-01 04:00:00', '2013-09-08 03:59:59', 2, 186, 9, 5, '+after-president-syria', '2013-09-11 09:03:44'),
+(3228, 2, 'W', '2013-09-01 04:00:00', '2013-09-08 03:59:59', 2, 177, 9, 5, '+after-president-syria', '2013-09-11 09:03:44'),
+(3229, 2, 'W', '2013-09-01 04:00:00', '2013-09-08 03:59:59', 2, 178, 9, 5, '+after-president-syria', '2013-09-11 09:03:44'),
+(3230, 2, 'W', '2013-09-01 04:00:00', '2013-09-08 03:59:59', 4, 222, 9, 5, '+after-president-syria', '2013-09-11 09:03:44'),
+(3231, 2, 'W', '2013-09-01 04:00:00', '2013-09-08 03:59:59', 2, 174, 9, 5, '+after-president-syria', '2013-09-11 09:03:44'),
+(3232, 2, 'W', '2013-09-01 04:00:00', '2013-09-08 03:59:59', 2, 150, 9, 5, '+after-president-syria', '2013-09-11 09:03:44'),
+(3233, 2, 'W', '2013-09-01 04:00:00', '2013-09-08 03:59:59', 3, 207, 9, 5, '+after-president-syria', '2013-09-11 09:03:44'),
+(3234, 2, 'W', '2013-09-01 04:00:00', '2013-09-08 03:59:59', 3, 214, 9, 5, '+after-president-syria', '2013-09-11 09:03:44'),
+(3235, 2, 'W', '2013-09-01 04:00:00', '2013-09-08 03:59:59', 2, 11, 9, 5, '+after-president-syria', '2013-09-11 09:03:44'),
+(3236, 2, 'W', '2013-09-01 04:00:00', '2013-09-08 03:59:59', 2, 151, 9, 5, '+after-president-syria', '2013-09-11 09:03:44'),
+(3237, 2, 'W', '2013-09-01 04:00:00', '2013-09-08 03:59:59', 3, 220, 9, 5, '+after-president-syria', '2013-09-11 09:03:44'),
+(3238, 2, 'W', '2013-09-01 04:00:00', '2013-09-08 03:59:59', 4, 241, 9, 5, '+after-president-syria', '2013-09-11 09:03:44'),
+(3239, 2, 'W', '2013-09-01 04:00:00', '2013-09-08 03:59:59', 2, 167, 9, 5, '+after-president-syria', '2013-09-11 09:03:44'),
+(3240, 2, 'W', '2013-09-01 04:00:00', '2013-09-08 03:59:59', 4, 240, 10, 6, '-over+president-syria', '2013-09-11 09:03:44'),
+(3241, 2, 'W', '2013-09-01 04:00:00', '2013-09-08 03:59:59', 4, 133, 10, 6, '-over+president-syria', '2013-09-11 09:03:44'),
+(3242, 2, 'W', '2013-09-01 04:00:00', '2013-09-08 03:59:59', 2, 154, 10, 6, '-over+president-syria', '2013-09-11 09:03:44'),
+(3243, 2, 'W', '2013-09-01 04:00:00', '2013-09-08 03:59:59', 3, 118, 10, 6, '-over+president-syria', '2013-09-11 09:03:44'),
+(3244, 2, 'W', '2013-09-01 04:00:00', '2013-09-08 03:59:59', 3, 119, 10, 6, '-over+president-syria', '2013-09-11 09:03:44'),
+(3245, 2, 'W', '2013-09-01 04:00:00', '2013-09-08 03:59:59', 2, 16, 10, 6, '-over+president-syria', '2013-09-11 09:03:44'),
+(3246, 2, 'W', '2013-09-01 04:00:00', '2013-09-08 03:59:59', 4, 228, 10, 6, '-over+president-syria', '2013-09-11 09:03:44'),
+(3247, 2, 'W', '2013-09-01 04:00:00', '2013-09-08 03:59:59', 3, 86, 10, 6, '-over+president-syria', '2013-09-11 09:03:44'),
+(3248, 2, 'W', '2013-09-01 04:00:00', '2013-09-08 03:59:59', 2, 41, 10, 6, '-over+president-syria', '2013-09-11 09:03:44'),
+(3249, 2, 'W', '2013-09-01 04:00:00', '2013-09-08 03:59:59', 2, 6, 10, 6, '-over+president-syria', '2013-09-11 09:03:44'),
+(3250, 2, 'W', '2013-09-01 04:00:00', '2013-09-08 03:59:59', 2, 162, 10, 6, '-over+president-syria', '2013-09-11 09:03:44'),
+(3251, 2, 'W', '2013-09-01 04:00:00', '2013-09-08 03:59:59', 4, 127, 10, 6, '-over+president-syria', '2013-09-11 09:03:44'),
+(3252, 2, 'W', '2013-09-01 04:00:00', '2013-09-08 03:59:59', 4, 126, 10, 6, '-over+president-syria', '2013-09-11 09:03:44'),
+(3253, 2, 'W', '2013-09-01 04:00:00', '2013-09-08 03:59:59', 2, 193, 11, 7, '-after-over+syria', '2013-09-11 09:03:44'),
+(3254, 2, 'W', '2013-09-01 04:00:00', '2013-09-08 03:59:59', 4, 221, 11, 7, '-after-over+syria', '2013-09-11 09:03:44'),
+(3255, 2, 'W', '2013-09-01 04:00:00', '2013-09-08 03:59:59', 4, 143, 11, 7, '-after-over+syria', '2013-09-11 09:03:44'),
+(3256, 2, 'W', '2013-09-01 04:00:00', '2013-09-08 03:59:59', 4, 223, 11, 7, '-after-over+syria', '2013-09-11 09:03:44'),
+(3257, 2, 'W', '2013-09-01 04:00:00', '2013-09-08 03:59:59', 4, 134, 11, 7, '-after-over+syria', '2013-09-11 09:03:44'),
+(3258, 2, 'W', '2013-09-01 04:00:00', '2013-09-08 03:59:59', 4, 131, 11, 7, '-after-over+syria', '2013-09-11 09:03:44'),
+(3259, 2, 'W', '2013-09-01 04:00:00', '2013-09-08 03:59:59', 4, 121, 11, 7, '-after-over+syria', '2013-09-11 09:03:44'),
+(3260, 2, 'W', '2013-09-01 04:00:00', '2013-09-08 03:59:59', 4, 125, 11, 7, '-after-over+syria', '2013-09-11 09:03:44'),
+(3261, 2, 'W', '2013-09-01 04:00:00', '2013-09-08 03:59:59', 3, 94, 11, 7, '-after-over+syria', '2013-09-11 09:03:44'),
+(3262, 2, 'W', '2013-09-01 04:00:00', '2013-09-08 03:59:59', 4, 244, 11, 7, '-after-over+syria', '2013-09-11 09:03:44'),
+(3263, 2, 'W', '2013-09-01 04:00:00', '2013-09-08 03:59:59', 4, 137, 11, 7, '-after-over+syria', '2013-09-11 09:03:44');
 
 -- --------------------------------------------------------
 
@@ -455,16 +507,11 @@ CREATE TABLE IF NOT EXISTS `users` (
   `key` text NOT NULL,
   `email` varchar(128) NOT NULL,
   `name` varchar(30) NOT NULL,
-  `updated_on` timestamp NULL DEFAULT NULL,
-  `created_on` timestamp NULL DEFAULT NULL,
+  `updated_on` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `created_on` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB  DEFAULT CHARSET=latin1 AUTO_INCREMENT=2 ;
 
---
--- Truncate table before insert `users`
---
-
-TRUNCATE TABLE `users`;
 --
 -- Dumping data for table `users`
 --
@@ -475,10 +522,10 @@ INSERT INTO `users` (`id`, `username`, `password`, `key`, `email`, `name`, `upda
 -- --------------------------------------------------------
 
 --
--- Table structure for table `word_counts`
+-- Table structure for table `word_count_reqs`
 --
 
-CREATE TABLE IF NOT EXISTS `word_counts` (
+CREATE TABLE IF NOT EXISTS `word_count_reqs` (
   `word_count` int(11) NOT NULL,
   `month_min` smallint(6) NOT NULL,
   `day_min` smallint(6) NOT NULL,
@@ -488,19 +535,14 @@ CREATE TABLE IF NOT EXISTS `word_counts` (
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1;
 
 --
--- Truncate table before insert `word_counts`
+-- Dumping data for table `word_count_reqs`
 --
 
-TRUNCATE TABLE `word_counts`;
---
--- Dumping data for table `word_counts`
---
-
-INSERT INTO `word_counts` (`word_count`, `month_min`, `day_min`, `week_min`, `year_min`) VALUES
-(0, 94, 3, 21, 1128),
-(1000, 126, 4, 28, 1512),
-(2000, 157, 5, 35, 1884),
-(3000, 189, 6, 42, 2268);
+INSERT INTO `word_count_reqs` (`word_count`, `month_min`, `day_min`, `week_min`, `year_min`) VALUES
+(0, 94, 3, 12, 1128),
+(1000, 126, 4, 16, 1512),
+(2000, 157, 5, 20, 1884),
+(3000, 189, 6, 24, 2268);
 
 /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
 /*!40101 SET CHARACTER_SET_RESULTS=@OLD_CHARACTER_SET_RESULTS */;

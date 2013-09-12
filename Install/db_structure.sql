@@ -3,7 +3,7 @@
 -- http://www.phpmyadmin.net
 --
 -- Host: localhost
--- Generation Time: Sep 07, 2013 at 04:55 AM
+-- Generation Time: Sep 11, 2013 at 05:06 AM
 -- Server version: 5.6.13
 -- PHP Version: 5.5.3
 
@@ -33,8 +33,8 @@ CREATE TABLE IF NOT EXISTS `categories` (
   `USER_ID` int(11) NOT NULL,
   `CATEGORY_NAME` varchar(50) NOT NULL,
   `COMMON_WORDS` text NOT NULL,
-  `UPDATED_ON` timestamp NULL DEFAULT NULL,
-  `CREATED_ON` timestamp NULL DEFAULT NULL,
+  `UPDATED_ON` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `CREATED_ON` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
   `LAST_RUN_ON` timestamp NULL DEFAULT NULL,
   PRIMARY KEY (`ID`),
   UNIQUE KEY `ID` (`ID`),
@@ -54,8 +54,8 @@ CREATE TABLE IF NOT EXISTS `feeds` (
   `save_articles` bit(1) DEFAULT b'0',
   `name` varchar(32) NOT NULL,
   `description` varchar(256) NOT NULL,
-  `updated_on` timestamp NULL DEFAULT NULL,
-  `created_on` timestamp NULL DEFAULT NULL,
+  `updated_on` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `created_on` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
   UNIQUE KEY `ID` (`id`)
 ) ENGINE=InnoDB  DEFAULT CHARSET=latin1 AUTO_INCREMENT=5 ;
@@ -77,12 +77,28 @@ CREATE TABLE IF NOT EXISTS `posts` (
   `description_words` text,
   `article` text,
   `title_description_words` text,
-  `updated_on` timestamp NULL DEFAULT NULL,
-  `created_on` timestamp NULL DEFAULT NULL,
+  `updated_on` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `created_on` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
   UNIQUE KEY `id` (`id`),
   FULLTEXT KEY `title_description_words` (`title_description_words`)
 ) ENGINE=InnoDB  DEFAULT CHARSET=latin1 AUTO_INCREMENT=246 ;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `summaries`
+--
+
+CREATE TABLE IF NOT EXISTS `summaries` (
+  `category_id` int(11) NOT NULL,
+  `type` varchar(1) NOT NULL DEFAULT '',
+  `start_time` timestamp NOT NULL DEFAULT '0000-00-00 00:00:00',
+  `data` text,
+  `created_on` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_on` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`category_id`,`type`,`start_time`)
+) ENGINE=InnoDB DEFAULT CHARSET=latin1;
 
 -- --------------------------------------------------------
 
@@ -92,33 +108,19 @@ CREATE TABLE IF NOT EXISTS `posts` (
 
 CREATE TABLE IF NOT EXISTS `summary_data` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
-  `summary_id` int(11) NOT NULL,
+  `category_id` int(11) NOT NULL,
+  `type` varchar(1) NOT NULL,
+  `start_time` timestamp NOT NULL DEFAULT '0000-00-00 00:00:00',
+  `end_time` timestamp NOT NULL DEFAULT '0000-00-00 00:00:00',
   `feed_id` int(11) NOT NULL,
   `post_id` int(11) NOT NULL,
   `match_id` int(11) NOT NULL,
   `match_priority` int(11) NOT NULL,
   `match_string` varchar(155) NOT NULL,
-  `created_on` timestamp NOT NULL DEFAULT '0000-00-00 00:00:00' ON UPDATE CURRENT_TIMESTAMP,
-  PRIMARY KEY (`summary_id`,`feed_id`,`id`),
-  UNIQUE KEY `id` (`id`)
-) ENGINE=InnoDB  DEFAULT CHARSET=latin1 AUTO_INCREMENT=14 ;
-
--- --------------------------------------------------------
-
---
--- Table structure for table `summary_list`
---
-
-CREATE TABLE IF NOT EXISTS `summary_list` (
-  `ID` int(11) NOT NULL AUTO_INCREMENT,
-  `STARTTIME` timestamp NOT NULL DEFAULT '0000-00-00 00:00:00',
-  `ENDTIME` timestamp NOT NULL DEFAULT '0000-00-00 00:00:00',
-  `CATEGORY_ID` int(11) NOT NULL DEFAULT '0',
-  `USER_ID` int(11) NOT NULL DEFAULT '0',
-  `RUN_ON` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  PRIMARY KEY (`STARTTIME`,`ENDTIME`,`CATEGORY_ID`,`USER_ID`),
-  UNIQUE KEY `ID` (`ID`)
-) ENGINE=InnoDB  DEFAULT CHARSET=latin1 AUTO_INCREMENT=2 ;
+  `created_on` timestamp NULL DEFAULT NULL,
+  UNIQUE KEY `id` (`id`),
+  KEY `category_id` (`category_id`,`type`,`start_time`,`end_time`)
+) ENGINE=InnoDB  DEFAULT CHARSET=latin1 AUTO_INCREMENT=3303 ;
 
 -- --------------------------------------------------------
 
@@ -133,18 +135,18 @@ CREATE TABLE IF NOT EXISTS `users` (
   `key` text NOT NULL,
   `email` varchar(128) NOT NULL,
   `name` varchar(30) NOT NULL,
-  `updated_on` timestamp NULL DEFAULT NULL,
-  `created_on` timestamp NULL DEFAULT NULL,
+  `updated_on` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `created_on` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB  DEFAULT CHARSET=latin1 AUTO_INCREMENT=2 ;
 
 -- --------------------------------------------------------
 
 --
--- Table structure for table `word_counts`
+-- Table structure for table `word_count_reqs`
 --
 
-CREATE TABLE IF NOT EXISTS `word_counts` (
+CREATE TABLE IF NOT EXISTS `word_count_reqs` (
   `word_count` int(11) NOT NULL,
   `month_min` smallint(6) NOT NULL,
   `day_min` smallint(6) NOT NULL,

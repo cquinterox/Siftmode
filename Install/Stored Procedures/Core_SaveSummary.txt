@@ -1,0 +1,6 @@
+CREATE DEFINER=`root`@`localhost` PROCEDURE `Core_SaveSummary`(IN _CATEGORY_ID int, IN _START_TIME timestamp, IN _SUMMARY_TYPE varchar(1), IN _DATA Text)
+    COMMENT 'Author: Cesar Quinteros\nCreated: 2013-09-04\nDescription: Inserts processed post data.'
+INSERT INTO  `Siftmode`.`summaries` (`category_id` ,`type` ,`start_time` ,`data` )
+VALUES (_CATEGORY_ID,  _SUMMARY_TYPE,  _START_TIME,  _DATA)
+ON DUPLICATE KEY 
+UPDATE `data` = _DATA
